@@ -23,11 +23,14 @@
                     this.$store.dispatch('clearOrderedProducts')
                 }
             })
-            axios.post('/auth/noUser').then(response => {
-                if (response.data === true) {
-                    this.$store.dispatch('logout')
-                }
-            })
+
+            if (this.$store.state.currentUser !== null) {
+                axios.post('/auth/checkCorrectLogin').then(response => {
+                    if (response.data === true) {
+                        this.$store.dispatch('logout')
+                    }
+                })
+            }
         },
         methods: {
             hideSearch() {

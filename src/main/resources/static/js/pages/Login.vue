@@ -195,22 +195,13 @@
                 email: '',
             }
         },
-        beforeCreate() {
-            axios.post('/auth/hasUser').then(noUser => {
-                if (noUser.data === true) {
-                    this.$router.push('/user/cabinet')
-                }
-            })
-        },
         created() {
             this.loading = false
         },
         methods: {
             submitRegistration() {
                 this.$v.$touch()
-
                 if (this.registrationValid) {
-
                     let registrationData = {}
                     registrationData['email']      = this.email
                     registrationData['username']   = this.username

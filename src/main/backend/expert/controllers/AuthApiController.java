@@ -39,8 +39,8 @@ public class AuthApiController {
         return user == null ? new ResponseEntity<>(HttpStatus.UNAUTHORIZED) : new ResponseEntity<>("ok",HttpStatus.OK);
     }
 
-    @PostMapping("/hasUser")
-    private boolean hasUser(@AuthenticationPrincipal User user) {
-        return user != null;
+    @PostMapping("/checkCorrectLogin")
+    private boolean checkCorrectLogin(@AuthenticationPrincipal User user) {
+        return user == null;
     }
 }
