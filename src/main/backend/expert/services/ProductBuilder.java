@@ -1,6 +1,15 @@
 package expert.services;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVReader;
+import expert.config.JsonConfig;
+import expert.domain.OriginalProduct;
+import expert.domain.Product;
+import expert.domain.UniqueBrand;
+import expert.repos.BrandsRepo;
+import expert.repos.OrderRepo;
+import expert.repos.OriginalRepo;
+import expert.repos.ProductRepo;
 import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
 import org.apache.commons.lang3.StringUtils;
@@ -9,31 +18,22 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.jsoup.Connection;
-import org.jsoup.Jsoup;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import expert.config.JsonConfig;
-import expert.domain.*;
-import expert.dto.SearchProduct;
-import expert.repos.*;
-
-import java.awt.*;
-import java.io.*;
-import java.net.ConnectException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.time.LocalDate;
-import java.util.*;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.jsoup.HttpStatusException;
+import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.ImageIO;
+import java.io.*;
+import java.net.ConnectException;
+import java.net.MalformedURLException;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Log
 @Service
@@ -44,6 +44,11 @@ public class ProductBuilder {
     private final JsonConfig jsonConfig;
     private final BrandsRepo brandsRepo;
     private final OrderRepo orderRepo;
+
+
+    /*
+    * Два файла exel в один и итерация по общему списку*/
+
 
     public void updateProductsDB(MultipartFile excelFile) {
         try
@@ -75,9 +80,8 @@ public class ProductBuilder {
     /*Пост-обработка разметки*/
     private void checkProductGroupCorrect() {
         log.info("checkProductGroupCorrect...");
-        /*Любое условие ниже*/
 
-        productRepo.findByProductGroupIgnoreCase("Клавиатуры, мыши, комплекты").forEach(product -> {
+        Thread thread = new Thread(() -> productRepo.findByProductGroupIgnoreCase("Клавиатуры, мыши, комплекты").forEach(product -> {
             if (product.getSingleTypeName().contains("мышь")) {
                 product.setProductGroup("Мыши");
             }
@@ -86,20 +90,29 @@ public class ProductBuilder {
             }
             product.setProductCategory("Компьютеры и оргтехника");
             productRepo.save(product);
-        });
+        }));
+        thread.start();
 
-        productRepo.findAll().forEach(product -> {
+        Thread thread1 = new Thread(() -> productRepo.findAll().forEach(product -> {
             if (product.getPic() == null) {
                 product.setPic("https://legprom71.ru/Content/images/no-photo.png");
                 productRepo.save(product);
             }
-        });
+        }));
+        thread1.start();
+
+        Thread trimOriginalType = new Thread(() -> productRepo.findAllByProductCategory("Сопутствующие товары").forEach(product -> {
+            String productGroup = StringUtils.substringAfter(product.getProductGroup(), " ");
+            product.setProductGroup(productGroup);
+            productRepo.save(product);
+        }));
+        trimOriginalType.start();
 
         /*<!--тип из аннотации в productType, если нет, то singleType-->*/
     }
 
     private void checkOrdersForProductAvailable() {
-       log.info("checkOrdersForProductAvailable...");
+        log.info("checkOrdersForProductAvailable...");
 
         orderRepo.findAllByAcceptedFalse().forEach(order -> {
             order.getOrderedProducts().entrySet().removeIf(orderedEntry -> productRepo.findByProductID(orderedEntry.getKey()) == null);

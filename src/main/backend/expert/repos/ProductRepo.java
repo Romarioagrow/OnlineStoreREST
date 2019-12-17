@@ -27,5 +27,7 @@ public interface ProductRepo extends JpaRepository<Product, String> {
     List<Product> findBySupplierAndPicNotContains(String s, String ss);
 
     List<Product> findByBrandIgnoreCaseAndPicNotContains(String s, String ss);
+
+    List<Product> findAllByProductCategory(String category);
 }
 
