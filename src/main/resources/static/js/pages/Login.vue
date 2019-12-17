@@ -195,7 +195,6 @@
                 email: '',
             }
         },
-
         beforeCreate() {
             axios.post('/auth/hasUser').then(noUser => {
                 if (noUser.data === true) {

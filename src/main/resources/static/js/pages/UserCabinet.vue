@@ -243,14 +243,13 @@
                 userConfirmed: false
             }
         },
-        created() {
-
-        },
         mounted() {
             this.userConfirmed = true
-            this.loadAcceptedOrders()
-            this.loadCompletedOrders()
-            this.showUserBonus()
+            if (this.$store.state.currentUser !== null) {
+                this.loadAcceptedOrders()
+                this.loadCompletedOrders()
+                this.showUserBonus()
+            }
         },
         methods: {
             logout() {
@@ -288,11 +287,12 @@
             }
         },
         beforeCreate() {
-            axios.post('/auth/noUser').then(noUser => {
-                if (noUser.data === true) {
+            axios.post('/auth/noUser').then(() => {
+                    console.log('ok');
+                },
+                () => {
                     this.$router.push('/login')
-                }
-            })
+                });
         }
     }
 </script>

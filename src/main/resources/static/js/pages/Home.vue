@@ -4,9 +4,6 @@
         <b-container fluid class="flu">
 
             <v-card>
-
-
-
                 <v-carousel hide-delimiters cycle>
                     <v-carousel-item v-for="(image, i) in items" :key="image">
                         <v-img contain eager :src="items[i]" alt="Bad Link"></v-img>

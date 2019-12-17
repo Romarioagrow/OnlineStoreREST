@@ -1,11 +1,18 @@
 package expert.controllers;
-import lombok.AllArgsConstructor;
-import lombok.extern.java.Log;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+
 import expert.domain.User;
 import expert.services.OrderService;
 import expert.services.UserService;
+import lombok.AllArgsConstructor;
+import lombok.extern.java.Log;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import java.util.LinkedList;
 import java.util.Map;
 
@@ -28,8 +35,8 @@ public class AuthApiController {
     }
 
     @PostMapping("/noUser")
-    private boolean noUser(@AuthenticationPrincipal User user) {
-        return user == null;
+    private ResponseEntity<String> noUser(@AuthenticationPrincipal User user) {
+        return user == null ? new ResponseEntity<>(HttpStatus.UNAUTHORIZED) : new ResponseEntity<>("ok",HttpStatus.OK);
     }
 
     @PostMapping("/hasUser")
