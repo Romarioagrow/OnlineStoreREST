@@ -216,31 +216,6 @@
                                             </v-col>
                                         </v-row>
                                     </div>
-
-                                    <!--<v-list subheader>
-                                        <v-subheader>Заказанные товары</v-subheader>
-                                        <v-list-item v-for="product in order.orderedList" :key="product.productID">
-                                            <v-list-item-avatar>
-                                                <v-img :src="product.pic"></v-img>
-                                            </v-list-item-avatar>
-
-                                            <v-list-item-content>
-                                                <v-list-item-title v-text="product.productName"></v-list-item-title>
-                                            </v-list-item-content>
-
-                                            <v-list-item-content>
-                                                <v-list-item-title>
-                                                    <span><strong>{{(product.productPrice * product.productAmount).toLocaleString('ru-RU')}}</strong> ₽</span>
-                                                </v-list-item-title>
-                                            </v-list-item-content>
-
-                                            <v-list-item-content>
-                                                <v-list-item-title>
-                                                    <span>за <strong>{{product.productAmount}} шт.</strong></span>
-                                                </v-list-item-title>
-                                            </v-list-item-content>
-                                        </v-list-item>
-                                    </v-list>-->
                                 </v-card>
                             </v-list-item>
                         </v-list>
@@ -269,12 +244,13 @@
             }
         },
         created() {
-            this.loadAcceptedOrders()
-            this.loadCompletedOrders()
-            this.showUserBonus()
+
         },
         mounted() {
             this.userConfirmed = true
+            this.loadAcceptedOrders()
+            this.loadCompletedOrders()
+            this.showUserBonus()
         },
         methods: {
             logout() {
@@ -286,12 +262,12 @@
                 })
             },
             loadAcceptedOrders() {
-                axios.get('/api/order/getAcceptedOrders').then((response) => {
+                axios.get('/api/order/get/getAcceptedOrders').then((response) => {
                     this.acceptedOrders = response.data
                 })
             },
             loadCompletedOrders() {
-                axios.get('/api/order/getCompletedOrders').then((response) => {
+                axios.get('/api/order/get/getCompletedOrders').then((response) => {
                     this.completedOrders = response.data
                 })
             },
@@ -304,7 +280,7 @@
                 this.activeContainerCompleted = true
             },
             showUserBonus() {
-                axios.get('/api/order/showUserBonus').then((response) => {
+                axios.get('/api/order/get/showUserBonus').then((response) => {
                     console.log(response)
                     this.$store.dispatch('setUserBonus', response.data)
                     this.userBonus = response.data

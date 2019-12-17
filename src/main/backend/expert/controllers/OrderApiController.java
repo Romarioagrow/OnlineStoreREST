@@ -1,6 +1,7 @@
 package expert.controllers;
 import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import expert.domain.Order;
@@ -49,23 +50,23 @@ public class OrderApiController {
         return orderService.acceptOrder(orderDetails);
     }
 
-    @GetMapping("/getAcceptedOrders")
+    @GetMapping("/get/getAcceptedOrders")
     private List<Order> getAcceptedOrders(@AuthenticationPrincipal User user) {
-        return orderService.getAllAcceptedOrders(user);
+        return user != null ? orderService.getAllAcceptedOrders(user) : null;
     }
 
-    @GetMapping("/getCompletedOrders")
+    @GetMapping("/get/getCompletedOrders")
     private List<Order> getCompletedOrders(@AuthenticationPrincipal User user) {
-        return orderService.getUserCompletedOrders(user);
+        return user != null ? orderService.getUserCompletedOrders(user) : null;
+    }
+
+    @GetMapping("/get/showUserBonus")
+    private int showUserBonus(@AuthenticationPrincipal User user) {
+        return user != null ? userRepo.findByUserID(user.getUserID()).getBonus() : null;
     }
 
     @GetMapping("/checkSessionOrder")
     private boolean checkSessionOrder() {
         return orderService.hasCurrentSessionOrder();
-    }
-
-    @GetMapping("/showUserBonus")
-    private int showUserBonus(@AuthenticationPrincipal User user) {
-        return userRepo.findByUserID(user.getUserID()).getBonus();
     }
 }
