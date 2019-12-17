@@ -87,11 +87,6 @@ public class AdminApiController {
         productBuilder.updateBrandsPrice(file);
     }
 
-    /*@PostMapping("/updateSearch")
-    private void updateSearch() throws IOException {
-        productBuilder.updateSearch();
-    }*/
-
     @PostMapping("/parsePicsRUSBT")
     private void parsePicsRUSBT() {
         productBuilder.parsePicsRUSBT();
