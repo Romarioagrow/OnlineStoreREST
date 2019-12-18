@@ -1,6 +1,8 @@
 package expert.services;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import expert.dto.OrderedProduct;
+import expert.dto.popular.Popular;
+import expert.dto.popular.PopularRepo;
 import expert.repos.OrderedProductRepo;
 import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
@@ -29,6 +31,7 @@ import static org.apache.commons.lang3.StringUtils.*;
 public class ProductService {
     private final ProductRepo productRepo;
     private final OrderedProductRepo orderedProductRepo;
+    private final PopularRepo popularRepo;
 
     public Page<Product> getProductsByGroup(String group, Pageable pageable) {
         return productRepo.findByProductGroupIgnoreCaseOrderByPicAsc(group, pageable);
@@ -385,36 +388,6 @@ public class ProductService {
         catch (IOException e) {
             e.printStackTrace();
         }
-
-        /*productRepo.findAll().forEach(product -> {
-            if (product.getPic().equals("_no_link")) {
-                product.setPic("https://legprom71.ru/Content/images/no-photo.png");
-                productRepo.save(product);
-                log.info(product.getPic());
-            }
-        });*/
-
-        /*log.info("TEST USER: " + user.getFirstName());
-        productBuilder.test();
-        Runnable taskOriginal = () -> {
-            originalRepo.findAll().forEach(originalProduct -> {
-                originalProduct.setUpdateDate(LocalDate.ofYearDay(2019,50));
-                originalRepo.save(originalProduct);
-                log.info("original " + originalProduct.getUpdateDate().toString());
-            });
-        };
-        taskOriginal.run();
-        new Thread(taskOriginal).start();
-        Runnable taskProducts = () -> {
-            productRepo.findAll().forEach(product -> {
-                product.setUpdateDate(LocalDate.ofYearDay(2019,50));
-                productRepo.save(product);
-                log.info("product " + product.getUpdateDate().toString());
-            });
-        };
-        taskProducts.run();
-        new Thread(taskProducts).start();*/
-
     }
 
     public List<OrderedProduct> getRecentProducts() {
@@ -425,28 +398,26 @@ public class ProductService {
     }
 
     public List<Product> getPopularProducts() {
+        List<Product> popularsProducts = new ArrayList<>();
+        popularRepo.findAll().forEach(popularID -> {
+            String productID = popularID.getProductID();
+            Product product = productRepo.findByProductID(productID);
+            if (product != null) {
+                popularsProducts.add(product);
+            }
+            else popularRepo.delete(popularRepo.findByProductID(productID));
+        });
+        Collections.reverse(popularsProducts);
+        return popularsProducts;
+    }
 
-        String[] popularsID = {
-                "02.02.08.0A.000025",
-                "02.02.04.02.000066",
-                "01.01.02.05.04.067",
-                "01.01.02.01.02530",
-                "01.05.01.000001258",
-                "07.03.01.000001600",
-                "03.01.01.02.001580",
-                "03.02.01.02.001646",
-                "03.02.01.01.001333",
-                "03.03.01.000002028"
-        };
+    public List<Product> addPopularProducts(String productID) {
+        popularRepo.save(new Popular(productID));
+        return getPopularProducts();
+    }
 
-        List<Product> populars = new ArrayList<>();
-
-        for (String id : popularsID) {
-            populars.add(productRepo.findByProductID(id));
-        }
-
-        return populars;
-
-        //return productRepo.findByBrandIgnoreCaseAndPicNotContains("Doffler", "legprom71").stream().limit(10).collect(Collectors.toList());
+    public List<Product> deletePopularProduct(String productID) {
+        popularRepo.delete(new Popular(productID));
+        return getPopularProducts();
     }
 }

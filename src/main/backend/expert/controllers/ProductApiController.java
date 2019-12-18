@@ -50,8 +50,19 @@ public class ProductApiController {
         return productService.getRecentProducts();
     }
 
-    @GetMapping("/popularProducts")
+    @GetMapping("/getPopularProducts")
     private List<Product> getPopularProducts() {
         return productService.getPopularProducts();
     }
+
+    @PostMapping("/addPopularProduct")
+    private List<Product> addPopularProduct(@RequestBody String productID) {
+        return productService.addPopularProducts(productID);
+    }
+
+    @PostMapping("/deletePopularProduct")
+    private List<Product> deletePopularProduct(@RequestBody String productID) {
+        return productService.deletePopularProduct(productID);
+    }
+
 }
