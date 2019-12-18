@@ -1,8 +1,8 @@
 package expert.controllers;
 
 import expert.domain.Order;
+import expert.domain.Product;
 import expert.domain.User;
-import expert.repos.ProductRepo;
 import expert.services.OrderService;
 import expert.services.ProductBuilder;
 import expert.services.ProductService;
@@ -26,6 +26,17 @@ public class AdminApiController {
     private final ProductBuilder productBuilder;
     private final OrderService orderService;
     private final ProductService productService;
+
+    @PostMapping("/restoreDefaultPrice")
+    private Product restoreDefaultPrice(@RequestBody String productID) {
+        log.info(productID);
+        return productBuilder.restoreDefaultPrice(productID);
+    }
+
+    @PostMapping("/setCustomPrice")
+    private Product setCustomPrice(@RequestBody Map<String, String> priceUpdate) {
+        return productBuilder.setCustomPrice(priceUpdate);
+    }
 
     @PostMapping("/searchAcceptedOrders")
     private List<Order> searchAcceptedOrders(@RequestBody String searchData) {
@@ -96,7 +107,6 @@ public class AdminApiController {
     private boolean downloadImage(@RequestBody Map<String, String> data) {
         return productBuilder.downloadImage(data);
     }
-
 
     @PostMapping("/test")
     private void uploadProductsDBFile(@AuthenticationPrincipal User user) {

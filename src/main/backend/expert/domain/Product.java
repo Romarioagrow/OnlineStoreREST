@@ -15,7 +15,7 @@ public class Product implements Serializable {
 
     private String productCategory, productGroup, productType;
 
-    private Integer finalPrice, bonus;
+    private Integer finalPrice, bonus, defaultPrice;
 
     private String brand, supplier;
 
@@ -30,6 +30,8 @@ public class Product implements Serializable {
     @Column(length = 20000)
     private String pic, linkToPic, localPic, pics, annotation, shortAnnotation, formattedAnnotation, annotationFromRUSBT;
 
+    private Boolean priceModified = false;
+
     @JsonIgnore
-    private Boolean isAvailable, uniquePrice, coefficientModified, priceModified, isDuplicate, hasDuplicates, mappedJSON = false;
+    private Boolean isAvailable, uniquePrice, coefficientModified, isDuplicate, hasDuplicates, mappedJSON = false;
 }

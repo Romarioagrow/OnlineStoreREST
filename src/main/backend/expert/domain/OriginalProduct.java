@@ -23,7 +23,7 @@ public class OriginalProduct {
 
     private LocalDate updateDate;
 
-    private Boolean isAvailable;
+    private Boolean priceModified, coefficientModified = false;
 
-    private Integer finalPrice, bonus;
+    private Integer finalPrice, bonus, modifiedPrice;
 }

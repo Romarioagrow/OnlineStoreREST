@@ -46,7 +46,7 @@
 
             <v-spacer></v-spacer>
 
-            <div class="d-flex align-baseline">
+            <div class="d-flex align-baseline" v-if="!isAdminMode">
                 <v-card-text style="padding-top: 25px;" class="flex-grow-1">
                     <h5>{{product.finalPrice.toLocaleString('ru-RU')}}₽</h5>
                 </v-card-text>
@@ -60,6 +60,27 @@
                     </v-btn>
                 </v-card-actions>
             </div>
+
+            <!--Редактирование цены-->
+            <div v-else>
+                <v-card-actions>
+                    <v-row>
+                        <v-col cols="7">
+                            <v-text-field
+                                    label="Цена"
+                                    v-model="price"
+                            ></v-text-field>
+                        </v-col>
+                        <v-col>
+                            <v-btn outlined small class="mt-4" @click="setCustomPrice(product.productID)">Обновить</v-btn>
+                        </v-col>
+                    </v-row>
+                </v-card-actions>
+                <v-card-actions v-if="product.priceModified">
+                    <v-btn block @click="restoreDefaultPrice(product.productID)">Цена по умолчанию</v-btn>
+                </v-card-actions>
+            </div>
+
         </v-card>
     </v-item>
 </template>
@@ -77,7 +98,8 @@
                 rules: [
                     value => !value || value.size < 2000000 || 'Изображение должно быть меньше 2 MB!',
                 ],
-                link:''
+                link:'',
+                price: this.product.finalPrice
             }
         },
         methods: {
@@ -99,29 +121,33 @@
                     'link': this.link,
                     'productID': productID
                 }
-
-                console.log(this.link)
-
-                const headers = {
-                    'Content-Type': 'application/json'
-                }
-
                 axios.post('/admin/downloadImage', data, {
-                    headers: headers
-                })
-                    .then((response) => {
-                        console.log(response.data)
-                    })
-                    .catch((error) => {
-
-                    })
-
-
-                /*axios.post('/admin/downloadImage', this.link, productID, {
-                    headers: headers
-                }).then(response => {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).then((response) => {
                     console.log(response.data)
-                })*/
+                })
+            },
+            setCustomPrice(productID) {
+                const priceUpdate = {
+                    'productID': productID,
+                    'newPrice': this.price
+                }
+                axios.post('/admin/setCustomPrice', priceUpdate).then((response) => {
+                    this.product = response.data
+                })
+            },
+            restoreDefaultPrice(productID) {
+                console.log(productID)
+                axios.post('/admin/restoreDefaultPrice', productID, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).then((response) => {
+                    this.product = response.data
+                    this.price = response.data.finalPrice
+                })
             }
         },
         computed: {

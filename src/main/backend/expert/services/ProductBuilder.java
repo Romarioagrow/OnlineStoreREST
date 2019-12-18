@@ -3,6 +3,7 @@ package expert.services;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVReader;
 import expert.config.JsonConfig;
+import expert.domain.Order;
 import expert.domain.OriginalProduct;
 import expert.domain.Product;
 import expert.domain.UniqueBrand;
@@ -45,10 +46,8 @@ public class ProductBuilder {
     private final BrandsRepo brandsRepo;
     private final OrderRepo orderRepo;
 
-
     /*
     * Два файла exel в один и итерация по общему списку*/
-
 
     public void updateProductsDB(MultipartFile excelFile) {
         try
@@ -75,6 +74,139 @@ public class ProductBuilder {
         catch (NullPointerException | IOException e) {
             e.getStackTrace();
         }
+    }
+
+    /*Обновление данных таблицы поставщиков*/
+    private void parseSupplierFile(MultipartFile excelFile) {
+        if (!Objects.requireNonNull(excelFile.getOriginalFilename()).isEmpty())
+        {
+            log.info("Парсинг: " + excelFile.getOriginalFilename());
+            try
+            {
+                int countCreate = 0, countUpdate = 0;
+                boolean supplierRBT = excelFile.getOriginalFilename().contains("СП2");
+
+                /// openBook(excelFile)
+                XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());
+                XSSFSheet sheet = workbook.getSheetAt(0);
+
+                for (Row row : sheet)
+                {
+                    if (lineIsCorrect(row, supplierRBT)) {
+                        String productID = resolveProductID(supplierRBT, row);
+
+                        /*Обновить существущий OriginalProduct*/
+                        if (originalProductExists(productID)) {
+                            updateOriginalProduct(row, productID, supplierRBT);
+                            countUpdate++;
+                        }
+                        /*Создать OriginalProduct*/
+                        else {
+                            createOriginalProduct(row, productID, supplierRBT);
+                            countCreate++;
+                        }
+                    }
+                }
+                log.info("Всего строк: " + sheet.getLastRowNum());
+                log.info("Создано: " + countCreate);
+                log.info("Обновлено: " + countUpdate);
+            }
+            catch (IOException ex) {
+                ex.printStackTrace();
+            }
+            catch (OLE2NotOfficeXmlFileException e) {
+                log.warning("Формат Excel документа должен быть XLSX!");
+            }
+        }
+    }
+
+    /*Создать Product для вывода на сайт*/
+    private void matchProductDetails() throws FileNotFoundException {
+        log.info("Маппинг группы и параметров...");
+
+        int countJSON = 0, countDefault = 0;
+        List<OriginalProduct> originalProducts = originalRepo.findByUpdateDate(LocalDate.now());
+        LinkedHashMap<String, String> aliases = jsonConfig.aliasesMap();
+
+        /*Для всех OriginalProduct из сегодняшнего каталога*/
+        for (OriginalProduct originalProduct : originalProducts)
+        {
+            String productID = originalProduct.getProductID();
+            Product product = productRepo.findByProductID(productID);
+            if (product == null) {
+                product = new Product();
+                product.setProductID(productID);
+            }
+
+            /*Разметить главные параметры для Product из заданного json файла-разметки*/
+            String originalGroup = originalProduct.getOriginalType();
+            mapping: for (Map.Entry<String,String> aliasEntry : aliases.entrySet())
+            {
+                for (String alias : aliasEntry.getKey().split(","))
+                {
+                    if (StringUtils.startsWithIgnoreCase(originalGroup, alias)) {
+                        product = matchProductJSON(aliasEntry, product);
+                        countJSON++;
+                        break mapping;
+                    }
+                }
+            }
+            /*Разметить главные параметры для оствшихся без json разметки Product*/
+            if (!product.getMappedJSON()) {
+                product = defaultProductMatch(originalProduct, product);
+                countDefault++;
+            }
+
+            /*Разметить операционные данные для всех сегодняшних Product*/
+            product = resolveProductsDetails(originalProduct, product);
+            productRepo.save(product);
+        }
+        log.info("JSON разметка: " + countJSON);
+        log.info("Auto разметка: " + countDefault);
+    }
+
+    private Product resolveProductsDetails(OriginalProduct originalProduct, Product product) throws NumberFormatException {
+        boolean supplierRBT   = originalProduct.getSupplier().equals("RBT");
+
+        String singleTypeName = product.getSingleTypeName();
+        String originalBrand  = originalProduct.getOriginalBrand();
+        String originalName   = originalProduct.getOriginalName();
+
+
+        String modelName      = resolveModelName(originalProduct).toUpperCase().trim();
+        String annotation     = resolveAnnotation(originalProduct, supplierRBT);
+        String shortAnnotation = resolveShortAnnotation(annotation, supplierRBT);
+        String formattedAnnotation = shortAnnotation.replaceAll(";", "<br>");
+
+        String fullName       = resolveFullName(originalName, modelName, singleTypeName, originalBrand).trim();
+        String groupBrandName = resolveBrandName(singleTypeName, originalBrand).trim();
+        String searchName     = resolveSearchName(modelName, singleTypeName, originalBrand).trim();
+        String shortModelName = resolveShortModel(modelName, singleTypeName, originalBrand).trim();
+
+        Integer finalPrice    = resolveFinalPrice(originalProduct, product.getDefaultCoefficient());
+        Integer bonus         = resolveBonus(finalPrice);
+
+        product.setOriginalName(originalName);
+        product.setFinalPrice(finalPrice);
+        product.setBonus(bonus);
+        product.setModelName(modelName);
+        product.setFullName(fullName);
+        product.setGroupBrandName(groupBrandName);
+        product.setSearchName(searchName);
+        product.setShortModelName(shortModelName);
+        product.setAnnotation(annotation);
+        product.setShortAnnotation(shortAnnotation);
+        product.setFormattedAnnotation(formattedAnnotation);
+
+        product.setSupplier(originalProduct.getSupplier());
+        product.setPic(originalProduct.getOriginalPic());
+        product.setBrand(originalBrand);
+        product.setUpdateDate(LocalDate.now());
+
+        originalProduct.setFinalPrice(finalPrice);
+        originalProduct.setBonus(bonus);
+        originalRepo.save(originalProduct);
+        return product;
     }
 
     /*Пост-обработка разметки*/
@@ -200,131 +332,6 @@ public class ProductBuilder {
         new ObjectMapper().writeValue(new File("D:\\Projects\\ExpertRestRELEASE\\src\\main\\resources\\static\\js\\assets\\json\\catalog.json"), fullCatalog);
     }
 
-    /*Обновление данных таблицы поставщиков*/
-    private void parseSupplierFile(MultipartFile excelFile) {
-        if (!Objects.requireNonNull(excelFile.getOriginalFilename()).isEmpty())
-        {
-            log.info("Парсинг: " + excelFile.getOriginalFilename());
-            try
-            {
-                int countCreate = 0, countUpdate = 0;
-                boolean supplierRBT = excelFile.getOriginalFilename().contains("СП2");
-
-                /// openBook(excelFile)
-                XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());
-                XSSFSheet sheet = workbook.getSheetAt(0);
-
-                for (Row row : sheet)
-                {
-                    if (lineIsCorrect(row, supplierRBT)) {
-                        String productID = resolveProductID(supplierRBT, row);
-
-                        if (originalProductExists(productID)) {
-                            updateOriginalProduct(row, productID, supplierRBT);
-                            countUpdate++;
-                        }
-                        else {
-                            createOriginalProduct(row, productID, supplierRBT);
-                            countCreate++;
-                        }
-                    }
-                }
-                log.info("Всего строк: " + sheet.getLastRowNum());
-                log.info("Создано: " + countCreate);
-                log.info("Обновлено: " + countUpdate);
-            }
-            catch (IOException ex) {
-                ex.printStackTrace();
-            }
-            catch (OLE2NotOfficeXmlFileException e) {
-                log.warning("Формат Excel документа должен быть XLSX!");
-            }
-        }
-    }
-
-    private void matchProductDetails() throws FileNotFoundException {
-        log.info("Маппинг группы и параметров...");
-
-        int countJSON = 0, countDefault = 0;
-        List<OriginalProduct> originalProducts = originalRepo.findByUpdateDate(LocalDate.now());
-        LinkedHashMap<String, String> aliases = jsonConfig.aliasesMap();
-
-        for (OriginalProduct originalProduct : originalProducts)
-        {
-            String productID = originalProduct.getProductID();
-            Product product = productRepo.findByProductID(productID);
-            if (product == null) {
-                product = new Product();
-                product.setProductID(productID);
-            }
-
-            /*matchGroup()*/
-            String originalGroup = originalProduct.getOriginalType();
-            mapping: for (Map.Entry<String,String> aliasEntry : aliases.entrySet())
-            {
-                for (String alias : aliasEntry.getKey().split(","))
-                {
-                    if (StringUtils.startsWithIgnoreCase(originalGroup, alias)) {
-                        product = matchProductJSON(aliasEntry, product);
-                        countJSON++;
-                        break mapping;
-                    }
-                }
-            }
-            if (!product.getMappedJSON()) {
-                product = defaultProductMatch(originalProduct, product);
-                countDefault++;
-            }
-
-            product = resolveProductsDetails(originalProduct, product);
-            productRepo.save(product);
-        }
-        log.info("JSON разметка: " + countJSON);
-        log.info("Auto разметка: " + countDefault);
-    }
-
-    private Product resolveProductsDetails(OriginalProduct originalProduct, Product product) throws NumberFormatException {
-        boolean supplierRBT   = originalProduct.getSupplier().equals("RBT");
-
-        String singleTypeName = product.getSingleTypeName();
-        String originalBrand  = originalProduct.getOriginalBrand();
-        String originalName   = originalProduct.getOriginalName();
-
-        Integer finalPrice    = resolveFinalPrice(originalProduct, product.getDefaultCoefficient());
-        String modelName      = resolveModelName(originalProduct).toUpperCase().trim();
-        String annotation     = resolveAnnotation(originalProduct, supplierRBT);
-        String shortAnnotation = resolveShortAnnotation(annotation, supplierRBT);
-        String formattedAnnotation = shortAnnotation.replaceAll(";", "<br>");
-
-        Integer bonus         = resolveBonus(finalPrice);
-        String fullName       = resolveFullName(originalName, modelName, singleTypeName, originalBrand).trim();
-        String groupBrandName = resolveBrandName(singleTypeName, originalBrand).trim();
-        String searchName     = resolveSearchName(modelName, singleTypeName, originalBrand).trim();
-        String shortModelName = resolveShortModel(modelName, singleTypeName, originalBrand).trim();
-
-        product.setOriginalName(originalName);
-        product.setFinalPrice(finalPrice);
-        product.setBonus(bonus);
-        product.setModelName(modelName);
-        product.setFullName(fullName);
-        product.setGroupBrandName(groupBrandName);
-        product.setSearchName(searchName);
-        product.setShortModelName(shortModelName);
-        product.setAnnotation(annotation);
-        product.setShortAnnotation(shortAnnotation);
-        product.setFormattedAnnotation(formattedAnnotation);
-
-        product.setSupplier(originalProduct.getSupplier());
-        product.setPic(originalProduct.getOriginalPic());
-        product.setBrand(originalBrand);
-        product.setUpdateDate(LocalDate.now());
-
-        originalProduct.setFinalPrice(finalPrice);
-        originalProduct.setBonus(bonus);
-        originalRepo.save(originalProduct);
-        return product;
-    }
-
     private String resolveShortAnnotation(String annotation, boolean supplierRBT) {
         if (!annotation.isEmpty())
         {
@@ -373,7 +380,7 @@ public class ProductBuilder {
             originalProduct.setSupplier(supplier);
             originalProduct.setOriginalPic(originalPic);
             originalProduct.setUpdateDate(LocalDate.now());
-            originalProduct.setIsAvailable(true);
+            //originalProduct.setIsAvailable(true);
             originalRepo.save(originalProduct);
         }
         catch (NullPointerException e) {
@@ -401,7 +408,7 @@ public class ProductBuilder {
         originalProduct.setOriginalPrice(newOriginalPrice);
         originalProduct.setOriginalAmount(newOriginalAmount);
         originalProduct.setUpdateDate(LocalDate.now());
-        originalProduct.setIsAvailable(true);
+        //originalProduct.setIsAvailable(true);
         originalRepo.save(originalProduct);
     }
 
@@ -557,7 +564,9 @@ public class ProductBuilder {
         if (productWithUniquePrice(originalProduct)) {
             return Integer.parseInt(StringUtils.deleteWhitespace(brandsRepo.findByProductID(originalProduct.getProductID()).getFinalPrice()));
         }
-        /// else if (productPriceModified())
+        else if (originalProduct.getPriceModified()) {
+            return originalProduct.getModifiedPrice();
+        }
         else return makeRoundFinalPrice(originalProduct.getOriginalPrice(), coefficient);
     }
 
@@ -824,5 +833,39 @@ public class ProductBuilder {
 
         log.info(productRepo.findByProductID(productID).getPic());
         return new File(fullPath).exists();
+    }
+
+    public Product setCustomPrice(Map<String, String> priceUpdate) {
+        String productID = priceUpdate.get("productID");
+        Integer newPrice = Integer.parseInt(priceUpdate.get("newPrice"));
+
+        Product product = productRepo.findByProductID(productID);
+        product.setDefaultPrice(product.getFinalPrice());
+        product.setFinalPrice(newPrice);
+        product.setPriceModified(true);
+        productRepo.save(product);
+
+        OriginalProduct originalProduct = originalRepo.findByProductID(productID);
+        originalProduct.setPriceModified(true);
+        originalProduct.setModifiedPrice(newPrice);
+        originalRepo.save(originalProduct);
+
+        return product;
+    }
+
+    public Product restoreDefaultPrice(String productID) {
+        log.info(productID);
+        Product product = productRepo.findByProductID(productID);
+        product.setFinalPrice(product.getDefaultPrice());
+        product.setDefaultPrice(null);
+        product.setPriceModified(false);
+        productRepo.save(product);
+
+        OriginalProduct originalProduct = originalRepo.findByProductID(productID);
+        originalProduct.setPriceModified(false);
+        originalProduct.setModifiedPrice(null);
+        originalRepo.save(originalProduct);
+
+        return product;
     }
 }
