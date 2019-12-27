@@ -10,7 +10,7 @@
 
                             <v-list-item v-for="[product, amount] of orderedProducts" :key="product.productID" @click="" style="min-height: 5rem;">
                                 <v-list-item-avatar horizontal class="ml-2">
-                                    <v-img :src="product.pic"></v-img>
+                                    <v-img contain :src="product.pic"></v-img>
                                 </v-list-item-avatar>
 
                                 <v-list-item-content class="ml-12">
@@ -62,12 +62,10 @@
                         <div v-if="!auth">
                             <v-card-actions>
                                 <!--В DIALOG!!!-->
-                                <router-link to="/login"  >
-                                    <v-btn class="cp" tile outlined color="success">
-                                        <v-icon left>mdi-login-variant</v-icon>
-                                        Войдите, что бы получить скидку!
-                                    </v-btn>
-                                </router-link>
+                                <v-btn class="cp" tile block outlined color="success" @click="toLogin()">
+                                    <v-icon left>mdi-login-variant</v-icon>
+                                    Войдите, что бы получить скидку!
+                                </v-btn>
                             </v-card-actions>
                         </div>
 
@@ -155,7 +153,6 @@
                                                         Применить скидку
                                                     </v-btn>
                                                 </v-col>
-
                                             </v-row>
                                         </v-card-text>
                                         <v-divider></v-divider>
@@ -290,7 +287,6 @@
                         </v-card-title>
                         <v-card-actions class="chartAreaWrapper">
                             <v-btn color="#e52d00" block dark @click="toCatalog()">
-                                <!--<v-icon dark right>mdi-backburger</v-icon>-->
                                 В каталог
                             </v-btn>
                         </v-card-actions>
@@ -436,9 +432,7 @@
                         orderDetails.userID = Math.round(this.$store.state.currentUser.userID)
                     }
 
-                    axios.post('/api/order/acceptOrder', orderDetails).then(response => {
-                        //console.log(response)
-
+                    axios.post('/api/order/acceptOrder', orderDetails).then(() => {
                         this.$store.dispatch('acceptOrder')
                         this.$store.dispatch('clearOrderedProducts')
                         this.orderDialog = false
@@ -459,6 +453,9 @@
             },
             toCatalog() {
                 this.$router.push('/')
+            },
+            toLogin() {
+                this.$router.push('/login')
             }
         },
         computed: {

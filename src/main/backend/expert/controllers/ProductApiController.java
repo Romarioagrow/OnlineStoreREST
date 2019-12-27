@@ -10,6 +10,7 @@ import expert.domain.Product;
 import expert.dto.FiltersList;
 import expert.services.ProductService;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +23,7 @@ public class ProductApiController {
 
     @GetMapping("/build_filters/{group}")
     private FiltersList createFiltersLists(@PathVariable String group) {
+        //productService.createDefaultFilterChecklist(group);
         return productService.createProductsFilterLists(group);
     }
 
@@ -36,7 +38,7 @@ public class ProductApiController {
     }
 
     @PostMapping("/filter/{group}/{page}")
-    private Page<Product> filterProducts(@RequestBody Map<String, String[]> filters, @PathVariable String group, @PathVariable(required = false) int page) {
+    private LinkedList<Object>/*Page<Product>*/ filterProducts(@RequestBody LinkedList<String> filters, @PathVariable String group, @PathVariable(required = false) int page) {
         return productService.filterProducts(filters, group, PageRequest.of(page, 15, Sort.Direction.ASC, "pic"));
     }
 

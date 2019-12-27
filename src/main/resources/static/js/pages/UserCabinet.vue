@@ -52,11 +52,12 @@
                     <v-layout justify-center align-center>
 
                         <v-list subheader width="100%" style="background-color: #f2f2f2;">
-                            <v-subheader><h3>Принятые заказы</h3></v-subheader>
+                            <v-subheader style="background-color: #fafafa;">
+                                <h3>Принятые заказы</h3>
+                            </v-subheader>
 
-                            <v-list-item-content v-for="order of acceptedOrders" :key="order.orderID">
+                            <v-list-item-content v-for="order of acceptedOrders" :key="order.orderID" style="background-color: #fafafa;">
                                 <v-card outlined width="100%" class="mb-6">
-
                                     <v-row>
                                         <v-col cols="7">
                                             <v-card-title>
@@ -70,7 +71,6 @@
                                             </v-card-title>
                                         </v-col>
                                     </v-row>
-
 
                                     <v-card-text class="pt-0 pb-0">
                                         <div class="my-4 subtitle-1 black--text" v-if="order.discountPrice === null">
@@ -89,28 +89,6 @@
 
                                     <v-divider></v-divider>
 
-
-                                    <!--<v-simple-table>
-                                        <template v-slot:default>
-                                            <tbody>
-                                            <tr  v-for="product in order.orderedList" :key="product.productID">
-                                                <td>
-                                                    <v-img :src="product.pic" height="50" contain></v-img>
-                                                </td>
-                                                <td>
-                                                    <router-link :to="'/products/product/'+product.productID" style="color: black"><span v-text="product.productName"></span></router-link>
-                                                </td>
-                                                <td>
-                                                    <span><strong>{{(product.productPrice * product.productAmount).toLocaleString('ru-RU')}}</strong> ₽</span>
-                                                </td>
-                                                <td>
-                                                    <span>за <strong>{{product.productAmount}} шт.</strong></span>
-                                                </td>
-
-                                            </tr>
-                                            </tbody>
-                                        </template>
-                                    </v-simple-table>-->
                                     <v-subheader>Заказанные товары</v-subheader>
                                     <div v-for="product in order.orderedList" :key="product.productID">
                                         <v-row class="ml-2">
@@ -131,43 +109,20 @@
                                             </v-col>
                                         </v-row>
                                     </div>
-
-
-                                    <!--<v-list subheader>
-                                        <v-subheader>Заказанные товары</v-subheader>
-                                        <v-list-item selectable v-for="product in order.orderedList" :key="product.productID">
-                                            <v-list-item-avatar>
-                                                <v-img :src="product.pic"></v-img>
-                                            </v-list-item-avatar>
-
-                                            <v-list-item-content>
-                                                <router-link :to="'/products/product/'+product.productID" style="color: black"><v-list-item-title v-text="product.productName"></v-list-item-title></router-link>
-                                            </v-list-item-content>
-
-                                            <v-list-item-content>
-                                                <v-list-item-title>
-                                                    <span><strong>{{(product.productPrice * product.productAmount).toLocaleString('ru-RU')}}</strong> ₽</span>
-                                                </v-list-item-title>
-                                            </v-list-item-content>
-
-                                            <v-list-item-content>
-                                                <v-list-item-title>
-                                                    <span>за <strong>{{product.productAmount}} шт.</strong></span>
-                                                </v-list-item-title>
-                                            </v-list-item-content>
-
-                                        </v-list-item>
-                                    </v-list>-->
                                 </v-card>
                             </v-list-item-content>
                         </v-list>
                     </v-layout>
                 </v-container>
+
                 <v-container v-if="activeContainerCompleted">
                     <v-layout justify-center align-center>
                         <v-list subheader width="100%" style="background-color: #f2f2f2;">
-                            <v-subheader><h3>Завершенные заказы</h3></v-subheader>
-                            <v-list-item v-for="order of completedOrders" :key="order.orderID">
+                            <v-subheader style="background-color: #fafafa;">
+                                <h3>Завершенные заказы</h3>
+                            </v-subheader>
+
+                            <v-list-item v-for="order of completedOrders" :key="order.orderID" style="background-color: #fafafa;">
                                 <v-card outlined width="100%" class="mb-6">
 
                                     <v-card-title>

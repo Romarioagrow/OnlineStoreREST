@@ -13,7 +13,8 @@ public class FiltersList {
     public List<Integer> prices = new LinkedList<>();
     public Set<String> brands = new TreeSet<>(), features = new TreeSet<>();
     public Map<String, TreeSet<Double>> diapasonsFilters = new TreeMap<>();
-    public Map<String, TreeSet<String>> paramFilters  = new TreeMap<>();;
+    public Map<String, TreeSet<String>> paramFilters  = new TreeMap<>();
+    public Set<String> checklist = new HashSet<>();
 
     public void showInfo() {
         System.out.println();

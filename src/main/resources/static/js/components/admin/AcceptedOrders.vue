@@ -141,28 +141,44 @@
         },
         methods: {
             confirmOrder(orderID) {
-                axios.post('admin/confirmOrder', orderID).then(() => {
+                axios.post('admin/confirmOrder', orderID, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).then(() => {
                     axios.get('/admin/acceptedOrders').then(response => {
                         this.acceptedOrders = response.data
                     })
                 })
             },
             cancelConfirmOrder(orderID) {
-                axios.post('admin/cancelConfirmOrder', orderID).then(() => {
+                axios.post('admin/cancelConfirmOrder', orderID, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).then(() => {
                     axios.get('/admin/acceptedOrders').then(response => {
                         this.acceptedOrders = response.data
                     })
                 })
             },
             completeOrder(orderID) {
-                axios.post('admin/completeOrder', orderID).then(() => {
+                axios.post('admin/completeOrder', orderID, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).then(() => {
                     axios.get('/admin/acceptedOrders').then(response => {
                         this.acceptedOrders = response.data
                     })
                 })
             },
             deleteOrder(orderID) {
-                axios.post('admin/deleteOrder', orderID).then((response) => {
+                axios.post('admin/deleteOrder', orderID, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }).then((response) => {
                     this.acceptedOrders = response.data
                 })
             },

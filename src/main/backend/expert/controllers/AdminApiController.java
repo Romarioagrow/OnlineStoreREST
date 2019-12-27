@@ -45,22 +45,22 @@ public class AdminApiController {
 
     @PostMapping("/deleteOrder")
     private List<Order> deleteOrder(@RequestBody String orderID) {
-        return orderService.deleteOrder(Long.parseLong(orderID.replaceAll("=", "")));
+        return orderService.deleteOrder(Long.parseLong(orderID));
     }
 
     @PostMapping("/completeOrder")
     private boolean completeOrder(@RequestBody String orderID) {
-        return orderService.completeOrder(Long.parseLong(orderID.replaceAll("=", "")));
+        return orderService.completeOrder(Long.parseLong(orderID));
     }
 
     @PostMapping("/confirmOrder")
     private boolean acceptOrder(@RequestBody String orderID) {
-        return orderService.confirmOrder(Long.parseLong(orderID.replaceAll("=", "")));
+        return orderService.confirmOrder(Long.parseLong(orderID));
     }
 
     @PostMapping("/cancelConfirmOrder")
     private boolean cancelConfirmOrder(@RequestBody String orderID) {
-        return orderService.cancelConfirmOrder(Long.parseLong(orderID.replaceAll("=", "")));
+        return orderService.cancelConfirmOrder(Long.parseLong(orderID));
     }
 
     @GetMapping("/acceptedOrders")

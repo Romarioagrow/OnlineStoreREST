@@ -510,12 +510,7 @@ public class ProductBuilder {
         return shortModelName.replaceAll("-", "").replaceAll("_", "").replaceAll("_", "").replaceAll("\\(", "").replaceAll("\\)", "").replaceAll("/", "").toLowerCase();
     }
 
-    /*private String formatAnnotation(String annotation) {
-        if (!annotation.isEmpty() && annotation.contains(";")) {
-            return annotation.replaceAll(";", "<br>");
-        }
-        return null;
-    }*/
+
 
     private String resolveAnnotation(OriginalProduct originalProduct, boolean supplierRBT) {
         String annotation;
