@@ -38,7 +38,7 @@ public class ProductApiController {
     }
 
     @PostMapping("/filter/{group}/{page}")
-    private LinkedList<Object>/*Page<Product>*/ filterProducts(@RequestBody LinkedList<String> filters, @PathVariable String group, @PathVariable(required = false) int page) {
+    private LinkedList<Object> filterProducts(@RequestBody LinkedList<String> filters, @PathVariable String group, @PathVariable(required = false) int page) {
         return productService.filterProducts(filters, group, PageRequest.of(page, 15, Sort.Direction.ASC, "pic"));
     }
 

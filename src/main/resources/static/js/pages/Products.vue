@@ -92,14 +92,17 @@
                     </v-expansion-panel>
 
                     <!--Фильтры-параметры checkbox-->
-                    <!--#2d2d26-->
                     <v-expansion-panel v-for="[key, val] of filtersParams" :key="key">
                         <v-expansion-panel-header ripple>{{ key.charAt(0).toUpperCase() + key.substr(1) }}</v-expansion-panel-header>
                         <v-expansion-panel-content eager style="margin-top: 10px">
                             <div v-for="(param, i) in val" :key="i" :brand="param">
                                 <v-row>
-                                    <v-col class="p-0 m-0">
+                                    <v-col class="p-0 m-0" v-if="check(param)">
                                         <v-checkbox color="#e52d00" class="mt-2" @change="filterProducts('param;' + key + ': ' + param)" v-model="selectedParams" :label="param" :value="key +': '+param" height="2"></v-checkbox>
+                                    </v-col>
+
+                                    <v-col class="p-0 m-0" v-else>
+                                        <v-checkbox :disabled="true" color="#e52d00" class="mt-2" @change="filterProducts('param;' + key + ': ' + param)" v-model="selectedParams" :label="param" :value="key +': '+param" height="2"></v-checkbox>
                                     </v-col>
                                 </v-row>
                             </div>
@@ -201,7 +204,7 @@
                 showFiltersButtonToolbar: false,
                 loadingMoreProducts: false,
                 defaultFiltersChecklist: [],
-                computedFiltersCheckList: [],
+                //computedFiltersCheckList: [],
                 filtersQueue: []
 
             }
@@ -218,7 +221,7 @@
 
             /*Load Filters*/
             axios.get(this.filtersRequest).then(response => {
-                console.log(response.data)
+                //console.log(response.data)
 
                 this.defaultFiltersChecklist = response.data.checklist
                 console.log(this.defaultFiltersChecklist)
@@ -257,14 +260,14 @@
                 const isBottomOfScreen = el.scrollTop + window.innerHeight === el.offsetHeight
 
                 if(isBottomOfScreen) {
-                    console.log('bottomLoad')
+                    //console.log('bottomLoad')
 
                     if (Object.keys(this.filters).length === 0) {
                         if (this.products.length >=15 ) {
                             this.loadingMoreProducts = true
                         }
                         axios.get('/api/products/group'+this.requestGroup + '/' + this.scrollPage).then(response => {
-                            console.log(response.data.content)
+                            //console.log(response.data.content)
                             this.products = this.products.concat(response.data.content)
                             this.scrollPage+=1
                             this.loadingMoreProducts = false
@@ -290,7 +293,14 @@
             window.onscroll = null
             this.scrollPage = 1
         },
+        watch: {
+
+        },
         computed: {
+            ccc() {
+                //return this.defaultFiltersChecklist.filter(j => this.checkedLocations.includes(j.location))
+            },
+
             twoColsBrands() {
                 const twoColsBrands = []
                 for (let i = 0; i < this.filtersBrands.length; i+=2) {
@@ -304,9 +314,38 @@
             },
             filterButton() {
                 return this.$store.state.filtersClosedButton
-            }
+            },
+
         },
         methods: {
+            check(value) {
+
+                const val = value.toLowerCase().trim()
+                console.log(this.defaultFiltersChecklist)
+
+                console.log(val)
+                //console.log(string.includes(val))
+
+                //yourArray.indexOf("someString") > -1
+                //console.log(this.defaultFiltersChecklist.indexOf(val) > -1)
+
+                let string = this.defaultFiltersChecklist.join(';')
+                console.log(string.includes(val))
+
+                return string.includes(value.toString().toLowerCase())
+            },
+
+
+
+            watchDisable(val) {
+                return this.defaultFiltersChecklist.includes(val)
+            },
+
+
+            checkList(filter) {
+                return this.computedFiltersCheckList.includes(filter)
+            },
+
             loadPage(page) {
                 let pageRequest = this.pageRequest + '/' + page
                 axios.get(pageRequest).then(response =>
@@ -323,7 +362,7 @@
                 this.filtersScrollPage = 0
 
 
-                console.log(param)
+                //console.log(param)
 
 
                 let checkDiapason = param.substr(0, param.lastIndexOf(':'))
@@ -340,10 +379,11 @@
                 }
                 else this.filtersQueue.splice(this.filtersQueue.indexOf(param), 1);
 
-                console.log(this.filtersQueue)
+                //console.log(this.filtersQueue)
 
                 const filterURL = '/api/products/filter' + this.requestGroup + '/' + this.filtersScrollPage
                 console.log(filterURL)
+
                 axios.post(filterURL, this.filtersQueue).then(response => {
                     const page = response.data[0]
                     const filtersCheckList = response.data[1]
@@ -352,8 +392,38 @@
                     this.totalPages = page.totalPages
                     this.totalProductsFound = page.totalElements
 
-                    this.computedFiltersCheckList = filtersCheckList
-                    console.log(this.computedFiltersCheckList)
+                    this.defaultFiltersChecklist = filtersCheckList
+                    //console.log(this.defaultFiltersChecklist)
+
+
+                    ///Пройтись по всем checkbox и если name не входит в checklist то this disabled
+                    /*$("input:checkbox[name=type]:checked").each(function(){
+                        //yourArray.push($(this).val());
+                        console.log($(this).val())
+                    });
+*/
+
+                    //event.target.disabled = true;
+
+
+                    //console.log(this.filtersParams)
+
+                    this.filtersParams.forEach(value => {
+
+
+                        if (this.defaultFiltersChecklist.includes(value.toString().toLowerCase())) {
+                            //console.log(value)
+
+                        }
+
+                    })
+
+
+                    /*this.filtersParams.map(x => {
+                        //if (x.checked) return x.val
+                        console.log(x.val)
+                    })*/
+                    //console.log("Values of checked items: ", ret)
                 })
 
 
