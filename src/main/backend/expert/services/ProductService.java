@@ -34,7 +34,7 @@ public class ProductService {
     private final PopularRepo popularRepo;
 
     /*Основной алгоритм фильтрации*/
-    public LinkedList<Object> filterProducts(List<?> filters, String group, Pageable pageable) {
+    public LinkedList<Object> filterProducts(LinkedList<String> filters, String group, Pageable pageable) {
         List<Product> products = productRepo.findByProductGroupIgnoreCase(group);
 
         for (Object filter : filters) {
@@ -47,6 +47,8 @@ public class ProductService {
     }
 
     private List<Product> filteringProducts(List<Product> products, String filter) {
+        log.info(filter);
+
         String filterKey  = substringBefore(filter, ";");
         String filterName = substringAfter(filter, ";");
 
@@ -54,9 +56,21 @@ public class ProductService {
             case "price": return filterProductsByPrice(products, filterName);
             case "param": return filterProductsByParams(products, filterName);
             case "brand": return filterProductsByBrands(products, filterName);
+            case "feature": return filterProductsByFeature(products, filterName);
             case "diapason": return filterProductsByDiapasons(products, filterName);
             default: return products;
         }
+    }
+
+    private List<Product> filterProductsByFeature(List<Product> products, String filterName) {
+        final String filter1 = filterName.toLowerCase().concat(": да");
+        final String filter2 = filterName.toLowerCase().concat(": есть");
+
+        return products.stream().filter(product ->
+        {
+            String annotation = product.getShortAnnotation().toLowerCase();
+            return annotation.contains(filter1) || annotation.contains(filter2);
+        }).collect(Collectors.toList());
     }
 
     private List<Product> filterProductsByParams(List<Product> products, String filterName) {

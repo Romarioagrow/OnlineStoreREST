@@ -136,7 +136,7 @@
             <!--Список фильтров-особенностей-->
             <v-slide-group multiple show-arrows class="mt-5" style="margin-left: 5%">
                 <v-slide-item v-for="feature in filtersFeats" :key="feature" v-slot:default="{ active, toggle }">
-                    <v-btn :disabled="checkFilterInCheckList(feature)" class="mx-2 btn-actv" style="background-color: #fafafa" :input-value="active" active-class="orange text" depressed rounded @click="toggle" @mouseup="filterProducts('param:' + feature)">
+                    <v-btn :disabled="checkFilterInCheckList(feature)" class="mx-2 btn-actv" style="background-color: #fafafa" :input-value="active" active-class="orange text" depressed rounded @click="toggle" @mouseup="filterProducts('feature;' + feature)">
                         {{ feature }}
                     </v-btn>
                 </v-slide-item>
