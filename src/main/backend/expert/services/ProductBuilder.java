@@ -3,7 +3,6 @@ package expert.services;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVReader;
 import expert.config.JsonConfig;
-import expert.domain.Order;
 import expert.domain.OriginalProduct;
 import expert.domain.Product;
 import expert.domain.UniqueBrand;
@@ -47,7 +46,7 @@ public class ProductBuilder {
     private final OrderRepo orderRepo;
 
     /*
-    * Два файла exel в один и итерация по общему списку*/
+    * Два файла excel в один и итерация по общему списку*/
 
     public void updateProductsDB(MultipartFile excelFile) {
         try
@@ -87,8 +86,8 @@ public class ProductBuilder {
                 boolean supplierRBT = excelFile.getOriginalFilename().contains("СП2");
 
                 /// openBook(excelFile)
-                XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());
-                XSSFSheet sheet = workbook.getSheetAt(0);
+                //XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());
+                XSSFSheet sheet = new XSSFWorkbook(excelFile.getInputStream()).getSheetAt(0);
 
                 for (Row row : sheet)
                 {
@@ -151,6 +150,7 @@ public class ProductBuilder {
                     }
                 }
             }
+
             /*Разметить главные параметры для оствшихся без json разметки Product*/
             if (!product.getMappedJSON()) {
                 product = defaultProductMatch(originalProduct, product);
@@ -327,6 +327,7 @@ public class ProductBuilder {
                     e.printStackTrace();
                 }
             });
+
             fullCatalog.put(category, productGroups);
         }
         new ObjectMapper().writeValue(new File("D:\\Projects\\ExpertRestRELEASE\\src\\main\\resources\\static\\js\\assets\\json\\catalog.json"), fullCatalog);
@@ -380,7 +381,6 @@ public class ProductBuilder {
             originalProduct.setSupplier(supplier);
             originalProduct.setOriginalPic(originalPic);
             originalProduct.setUpdateDate(LocalDate.now());
-            //originalProduct.setIsAvailable(true);
             originalRepo.save(originalProduct);
         }
         catch (NullPointerException e) {
@@ -408,7 +408,6 @@ public class ProductBuilder {
         originalProduct.setOriginalPrice(newOriginalPrice);
         originalProduct.setOriginalAmount(newOriginalAmount);
         originalProduct.setUpdateDate(LocalDate.now());
-        //originalProduct.setIsAvailable(true);
         originalRepo.save(originalProduct);
     }
 
@@ -480,7 +479,6 @@ public class ProductBuilder {
         if (originalCategory.contains("_")) {
             originalCategory = StringUtils.substringAfter(originalCategory, "_");
         }
-
         switch (originalCategory) {
             case "Аудио"                    : return "Автотовары";
             case "Электроника"              : return "Теле-Видео-Аудио";
@@ -491,7 +489,6 @@ public class ProductBuilder {
             case "Инструмент"               : return "Строительные инструменты";
             case "Гаджеты"                  : return "Цифровые устройства";
             case "Отдых и Развлечения"      : return "Спорт и отдых";
-            /*default: return originalCategory;*/
             default: return originalCategory;
         }
     }
@@ -650,6 +647,7 @@ public class ProductBuilder {
             if (!duplicates.isEmpty())
             {
                 duplicates.sort(Comparator.comparing(Product::getFinalPrice));
+
                 for (Product duplicateProduct : duplicates)
                 {
                     if (product.getFinalPrice() <= duplicateProduct.getFinalPrice()) {
@@ -659,8 +657,6 @@ public class ProductBuilder {
                     else {
                         product.setIsDuplicate(true);
                         duplicateProduct.setHasDuplicates(true);
-                        //duplicateProduct.setPic(product.getPic());
-                        //duplicateProduct.setAnnotation(product.getAnnotation());
                     }
                     productRepo.save(product);
                     productRepo.save(duplicateProduct);

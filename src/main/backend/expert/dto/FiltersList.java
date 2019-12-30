@@ -14,7 +14,7 @@ public class FiltersList {
     public Set<String> brands = new TreeSet<>(), features = new TreeSet<>();
     public Map<String, TreeSet<Double>> diapasonsFilters = new TreeMap<>();
     public Map<String, TreeSet<String>> paramFilters  = new TreeMap<>();
-    public Set<String> checklist = new HashSet<>();
+    public String/*Set<String>*/ checklist;// = new HashSet<>();
 
     public void showInfo() {
         System.out.println();

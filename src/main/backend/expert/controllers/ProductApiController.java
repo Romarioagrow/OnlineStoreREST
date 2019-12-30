@@ -1,18 +1,17 @@
 package expert.controllers;
+
+import expert.domain.Product;
+import expert.dto.FiltersList;
 import expert.dto.OrderedProduct;
+import expert.services.ProductService;
 import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
-import expert.domain.Product;
-import expert.dto.FiltersList;
-import expert.services.ProductService;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Log
 @RestController
@@ -23,7 +22,6 @@ public class ProductApiController {
 
     @GetMapping("/build_filters/{group}")
     private FiltersList createFiltersLists(@PathVariable String group) {
-        //productService.createDefaultFilterChecklist(group);
         return productService.createProductsFilterLists(group);
     }
 
@@ -38,7 +36,11 @@ public class ProductApiController {
     }
 
     @PostMapping("/filter/{group}/{page}")
-    private LinkedList<Object> filterProducts(@RequestBody LinkedList<String> filters, @PathVariable String group, @PathVariable(required = false) int page) {
+    private LinkedList<Object> filterProducts(
+            @RequestBody LinkedList<String> filters,
+            @PathVariable String group,
+            @PathVariable(required = false) int page
+    ){
         return productService.filterProducts(filters, group, PageRequest.of(page, 15, Sort.Direction.ASC, "pic"));
     }
 
@@ -66,5 +68,4 @@ public class ProductApiController {
     private List<Product> deletePopularProduct(@RequestBody String productID) {
         return productService.deletePopularProduct(productID);
     }
-
 }

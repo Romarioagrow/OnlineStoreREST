@@ -142,7 +142,7 @@ public class ProductService {
         return filtersList;
     }
 
-    public Set<String> createDefaultFilterChecklist(String group) {
+    public String/*Set<String>*/ createDefaultFilterChecklist(String group) {
         List<Product> products = productRepo.findProductsByProductGroupIgnoreCase(group);
         Set<String> checklist = new HashSet<>();
 
@@ -153,8 +153,22 @@ public class ProductService {
             checklist.addAll(Arrays.asList(shortAnno));
         });
 
-        log.info(checklist.toString());
-        return checklist;
+        //log.info(checklist.toString());
+        return checklist.toString().toLowerCase();
+    }
+
+    private String createComputedFilterChecklist(List<Product> products) {
+        Set<String> checklist = new HashSet<>();
+
+        products.forEach(product -> {
+            checklist.add(StringUtils.capitalize(product.getBrand().toLowerCase()));
+
+            String[] shortAnno = product.getShortAnnotation().split(";");
+            checklist.addAll(Arrays.asList(shortAnno));
+        });
+
+        //log.info(checklist.toString());
+        return checklist.toString().toLowerCase();
     }
 
     private boolean filterIsFeature(String filter, String supplier) {
@@ -230,56 +244,35 @@ public class ProductService {
         return productRepo.findByProductID(productID);
     }
 
-
-    /*
-    Основной алгоритм фильтрации
-    Main sort algorithm
-    */
-    public LinkedList<Object> filterProducts(LinkedList<String> filters, String group, Pageable pageable) {
+    /*Основной алгоритм фильтрации*/
+    public LinkedList<Object> filterProducts(List<?> filters, String group, Pageable pageable) {
         List<Product> products = productRepo.findByProductGroupIgnoreCase(group);
-        log.info(products.toString());
-        log.info(products.size() + "");
+
+
+        /*log.info(products.toString());
+        log.info(products.size() + "");*/
 
         System.out.println();
-        filters.forEach(log::info);
+        filters.forEach(o -> log.info(o.toString()));
         System.out.println();
 
-        for (String filter : filters) {
-            String filterKey  = substringBefore(filter, ";");
-            String filterName = substringAfter(filter, ";");
-
-            log.info(filterKey);
-            log.info(filterName);
-
-
-            /*switch (filterKey) {
-                case "param": products = filterProductsByParams(products, filterName);
-                case "brand": products = filterProductsByBrands(products, filterName);
-                *//*case "diapason": products = filterProductsByDiapasons(products, filterName);
-                case "price" : products = filterProductsByPrice(products, filterName);
-
-                //default: return products;*//*
-            }*/
-
-            if (filterKey.equals("param")) {
-                products = filterProductsByParams(products, filterName);
-            }
-
-            if (filterKey.equals("brand")) {
-                products = filterProductsByBrands(products, filterName);
-            }
+        for (Object filter : filters) {
+            products = filteringProducts(products, filter.toString());
         }
 
-        //Page<Product>
-        log.info(products.toString());
+        /*log.info(products.toString());
+        log.info(products.size() + "");*/
+
+        //log.info(products.toString());
+
+        products.forEach(product -> log.info(product.toString()));
         log.info(products.size() + "");
 
-        Set<String> filterCheckList = createComputedFilterChecklist(products);
+        String filterCheckList = createComputedFilterChecklist(products);
 
         return productsPage(products, pageable, filterCheckList);
 
 
-///
         /*
         Коллекция с фильтрами LinkedList наполняется и убирается, фильтруется для каждого фильтра в ней
         Новый фильтр добавляется к уже существующему друг за другом
@@ -381,50 +374,60 @@ public class ProductService {
         //return productsPage(products, pageable);*/
     }
 
-    private Set<String> createComputedFilterChecklist(List<Product> products) {
+    private List<Product> filteringProducts(List<Product> products, String filter) {
+        String filterKey  = substringBefore(filter, ";");
+        String filterName = substringAfter(filter, ";");
 
-        Set<String> checklist = new HashSet<>();
-
-        products.forEach(product -> {
-            checklist.add(StringUtils.capitalize(product.getBrand().toLowerCase()));
-
-            String[] shortAnno = product.getShortAnnotation().split(";");
-            checklist.addAll(Arrays.asList(shortAnno));
-        });
-
-        log.info(checklist.toString());
-        return checklist;
+        switch (filterKey) {
+            case "price": return filterProductsByPrice(products, filterName);
+            case "param": return filterProductsByParams(products, filterName);
+            case "brand": return filterProductsByBrands(products, filterName);
+            case "diapason": return filterProductsByDiapasons(products, filterName);
+            default: return products;
+        }
     }
 
     private List<Product> filterProductsByParams(List<Product> products, String filterName) {
-        //log.info("filterName " + filterName);
-        products = products.stream().filter(product -> containsIgnoreCase(product.getShortAnnotation(), filterName)).collect(Collectors.toList());
-        /*log.info(products.toString());
-        log.info("size: "+products.size());*/
-        return products;
+
+        log.info(filterName);
+
+        return products.stream().filter(product -> containsIgnoreCase(product.getShortAnnotation(), filterName)).collect(Collectors.toList());
     }
 
-
     private List<Product> filterProductsByBrands(List<Product> products, String filterName) {
-        products = products.stream().filter(product -> containsIgnoreCase(product.getBrand(), filterName)).collect(Collectors.toList());
-        return products;
+        return products.stream().filter(product -> containsIgnoreCase(product.getBrand(), filterName)).collect(Collectors.toList());
     }
 
     private List<Product> filterProductsByPrice(List<Product> products, String filterName) {
-        return null;
+        return products.stream().filter(product -> {
+            int minPrice = Integer.parseInt(substringBefore(filterName, ","));
+            int maxPrice = Integer.parseInt(substringAfter(filterName, ","));
+            return product.getFinalPrice() >= minPrice && product.getFinalPrice() <= maxPrice;
+        }).collect(Collectors.toList());
     }
 
     private List<Product> filterProductsByDiapasons(List<Product> products, String filterName) {
-        return null;
+        return products.stream().filter(product ->
+        {
+            String annotation = product.getShortAnnotation();
+            String diapasonKey = substringBefore(filterName, ":");
+
+            if (annotation.contains(diapasonKey))
+            {
+                String checkingFilter = substringBetween(annotation, diapasonKey, ";");
+                Double minFilter = Double.parseDouble(substringBetween(filterName, ":", ","));
+                Double maxFilter = Double.parseDouble(substringAfter(filterName, ","));
+                double checkingValue = Double.parseDouble(substringAfter(checkingFilter, ":").replaceAll(",","."));
+
+                if (minFilter == null || maxFilter == null) return false;
+
+                return checkingValue >= minFilter && checkingValue <= maxFilter;
+            }
+            return false;
+        }).collect(Collectors.toList());
     }
 
-
-
-    private boolean filterHasContent(Map<String, String[]> filters, String selectedDiapasons) {
-        return !Arrays.toString(filters.get(selectedDiapasons)).equals("[]");
-    }
-
-    private LinkedList<Object>/*Page<Product>*/ productsPage(List<Product> products, Pageable pageable, Set<String> filterCheckList) {
+    private LinkedList<Object> productsPage(List<Product> products, Pageable pageable, String filterCheckList) {
         try{
             int start = (int) pageable.getOffset();
             int end = Math.min((start + pageable.getPageSize()), products.size());
@@ -434,7 +437,6 @@ public class ProductService {
             payload.add(page);
             payload.add(filterCheckList);
             return payload;
-
         }
         catch (IllegalArgumentException e) {
             e.getStackTrace();
@@ -463,7 +465,6 @@ public class ProductService {
             }
             products = products.stream().limit(10).collect(Collectors.toList());
         }
-
         return products;
     }
 
@@ -479,9 +480,6 @@ public class ProductService {
             String pic = product != null ? product.getPic() : "D:\\Projects\\Rest\\src\\main\\resources\\static\\pics\\toster.png";
 
             groups.put(productGroup, pic);
-
-            /*group.add(productGroup);
-            group.add(pic);*/
         });
 
         try {

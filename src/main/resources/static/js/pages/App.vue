@@ -6,6 +6,7 @@
                 <router-view ></router-view>
             </div>
         </v-content>
+       <!-- <FooterDiv v-if="notProductsPage"></FooterDiv>-->
         <FooterDiv></FooterDiv>
     </v-app>
 </template>
@@ -35,6 +36,12 @@
         methods: {
             hideSearch() {
                 this.$store.dispatch('hideSearchedArea')
+            }
+        },
+        computed: {
+            notProductsPage () {
+                //console.log(!decodeURI(window.location.href).includes("products/"))
+                return !decodeURI(window.location.href).includes("products/")
             }
         }
     }

@@ -9,7 +9,7 @@
         <relativePath/>
     </parent>
     <groupId>ExpertRest</groupId>
-    <artifactId>pleasedo</artifactId>
+    <artifactId>ExpertRest</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>java</name>
     <description>java</description>

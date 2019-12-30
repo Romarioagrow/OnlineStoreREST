@@ -14,6 +14,8 @@ public interface ProductRepo extends JpaRepository<Product, String> {
 
     List<Product> findBySupplier(String supplier);
 
+    List<Product> findAllByProductCategory(String category);
+
     List<Product> findByProductGroupIgnoreCase(String group);
 
     List<Product> findByProductCategoryIgnoreCase(String category);
@@ -23,11 +25,5 @@ public interface ProductRepo extends JpaRepository<Product, String> {
     List<Product> findBySupplierAndShortModelNameIgnoreCase(String supplier, String shortModel);
 
     Page<Product> findByProductGroupIgnoreCaseOrderByPicAsc(String group, Pageable pageable);
-
-    List<Product> findBySupplierAndPicNotContains(String s, String ss);
-
-    List<Product> findByBrandIgnoreCaseAndPicNotContains(String s, String ss);
-
-    List<Product> findAllByProductCategory(String category);
 }
 

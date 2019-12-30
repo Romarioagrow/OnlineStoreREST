@@ -62,12 +62,12 @@
                         <v-expansion-panel-header ripple>Цены</v-expansion-panel-header>
                         <v-expansion-panel-content>
                             <v-card-actions>
-                                <v-range-slider class="align-bottom" v-model="priceRange" :min="min" :max="max" hide-details color="#e52d00" @end="filterProducts()">
+                                <v-range-slider class="align-bottom" v-model="priceRange" :min="min" :max="max" hide-details color="#e52d00" @end="filterProducts('price;' + priceRange)">
                                     <template v-slot:prepend>
-                                        <v-text-field @input="filterProducts()" color="#e52d00" v-model="priceRange[0]" type="string" style="width: 60px" class="mt-0 pt-0"></v-text-field>
+                                        <v-text-field @input="filterProducts('price;' + priceRange[0] + ',' + priceRange[1])" color="#e52d00" v-model="priceRange[0]" type="string" style="width: 60px" class="mt-0 pt-0"></v-text-field>
                                     </template>
                                     <template v-slot:append>
-                                        <v-text-field @input="filterProducts()" color="#e52d00" v-model="priceRange[1]" type="string" style="width: 60px" class="mt-0 pt-0"></v-text-field>
+                                        <v-text-field @input="filterProducts('price;' + priceRange[0] + ',' + priceRange[1])" color="#e52d00" v-model="priceRange[1]" type="string" style="width: 60px" class="mt-0 pt-0"></v-text-field>
                                     </template>
                                 </v-range-slider>
                             </v-card-actions>
@@ -80,9 +80,10 @@
                         <v-expansion-panel-content eager style="margin-top: 10px">
                             <div v-for="brand in twoColsBrands">
                                 <v-row>
-                                    <v-col class="p-0 ">
+                                    <v-col class="p-0">
                                         <v-checkbox color="#e52d00" class="mt-1" @change="filterProducts('brand;' + brand.firstBrand)" v-model="selectedBrands" :label="brand.firstBrand" :value="brand.firstBrand" height="2"></v-checkbox>
                                     </v-col>
+
                                     <v-col class="p-0 " v-if="brand.secondBrand !== undefined">
                                         <v-checkbox color="#e52d00" class="mt-1" @change="filterProducts('brand;' + brand.secondBrand)" v-model="selectedBrands" :label="brand.secondBrand" :value="brand.secondBrand" height="2"></v-checkbox>
                                     </v-col>
@@ -91,18 +92,15 @@
                         </v-expansion-panel-content>
                     </v-expansion-panel>
 
+
                     <!--Фильтры-параметры checkbox-->
                     <v-expansion-panel v-for="[key, val] of filtersParams" :key="key">
                         <v-expansion-panel-header ripple>{{ key.charAt(0).toUpperCase() + key.substr(1) }}</v-expansion-panel-header>
                         <v-expansion-panel-content eager style="margin-top: 10px">
                             <div v-for="(param, i) in val" :key="i" :brand="param">
                                 <v-row>
-                                    <v-col class="p-0 m-0" v-if="check(param)">
-                                        <v-checkbox color="#e52d00" class="mt-2" @change="filterProducts('param;' + key + ': ' + param)" v-model="selectedParams" :label="param" :value="key +': '+param" height="2"></v-checkbox>
-                                    </v-col>
-
-                                    <v-col class="p-0 m-0" v-else>
-                                        <v-checkbox :disabled="true" color="#e52d00" class="mt-2" @change="filterProducts('param;' + key + ': ' + param)" v-model="selectedParams" :label="param" :value="key +': '+param" height="2"></v-checkbox>
+                                    <v-col class="p-0 m-0">
+                                        <v-checkbox :disabled="checkFilterInCheckList(key + ': ' + param)" color="#e52d00" class="mt-2" @change="filterProducts('param;' + key + ': ' + param)" v-model="selectedParams" :label="param" :value="key +': '+param" height="2"></v-checkbox>
                                     </v-col>
                                 </v-row>
                             </div>
@@ -138,7 +136,7 @@
             <!--Список фильтров-особенностей-->
             <v-slide-group multiple show-arrows class="mt-5" style="margin-left: 5%">
                 <v-slide-item v-for="feature in filtersFeats" :key="feature" v-slot:default="{ active, toggle }">
-                    <v-btn class="mx-2 btn-actv" style="background-color: #fafafa" :input-value="active" active-class="orange text" depressed rounded @click="toggle" @mouseup="filterProducts('param:' + feature)">
+                    <v-btn :disabled="checkFilterInCheckList(feature)" class="mx-2 btn-actv" style="background-color: #fafafa" :input-value="active" active-class="orange text" depressed rounded @click="toggle" @mouseup="filterProducts('param:' + feature)">
                         {{ feature }}
                     </v-btn>
                 </v-slide-item>
@@ -203,10 +201,8 @@
                 filters: {},
                 showFiltersButtonToolbar: false,
                 loadingMoreProducts: false,
-                defaultFiltersChecklist: [],
-                //computedFiltersCheckList: [],
+                filtersChecklist: [],
                 filtersQueue: []
-
             }
         },
         created() {
@@ -221,10 +217,9 @@
 
             /*Load Filters*/
             axios.get(this.filtersRequest).then(response => {
-                //console.log(response.data)
 
-                this.defaultFiltersChecklist = response.data.checklist
-                console.log(this.defaultFiltersChecklist)
+                this.filtersChecklist = response.data.checklist
+                console.log(this.filtersChecklist)
 
                 let prices = response.data.prices
                 this.min = prices[0]
@@ -255,7 +250,7 @@
             })
         },
         mounted() {
-            window.onscroll = () =>{
+            window.onscroll = () => {
                 const el = document.documentElement
                 const isBottomOfScreen = el.scrollTop + window.innerHeight === el.offsetHeight
 
@@ -293,14 +288,7 @@
             window.onscroll = null
             this.scrollPage = 1
         },
-        watch: {
-
-        },
         computed: {
-            ccc() {
-                //return this.defaultFiltersChecklist.filter(j => this.checkedLocations.includes(j.location))
-            },
-
             twoColsBrands() {
                 const twoColsBrands = []
                 for (let i = 0; i < this.filtersBrands.length; i+=2) {
@@ -314,38 +302,14 @@
             },
             filterButton() {
                 return this.$store.state.filtersClosedButton
-            },
-
+            }
         },
         methods: {
-            check(value) {
-
-                const val = value.toLowerCase().trim()
-                console.log(this.defaultFiltersChecklist)
-
-                console.log(val)
-                //console.log(string.includes(val))
-
-                //yourArray.indexOf("someString") > -1
-                //console.log(this.defaultFiltersChecklist.indexOf(val) > -1)
-
-                let string = this.defaultFiltersChecklist.join(';')
-                console.log(string.includes(val))
-
-                return string.includes(value.toString().toLowerCase())
+            checkFilterInCheckList(value) {
+                console.log(value)
+                const val = value.toString().toLowerCase().trim()
+                return !this.filtersChecklist.includes(val)
             },
-
-
-
-            watchDisable(val) {
-                return this.defaultFiltersChecklist.includes(val)
-            },
-
-
-            checkList(filter) {
-                return this.computedFiltersCheckList.includes(filter)
-            },
-
             loadPage(page) {
                 let pageRequest = this.pageRequest + '/' + page
                 axios.get(pageRequest).then(response =>
@@ -353,37 +317,27 @@
             },
             filterProducts(param) {
 
-                /*
-                * Добавлять фильтры друг за другом, приписывать каждому фильтру его тип взависимости от вхождения
-                * Если нажатие по уже добавленному фильтру -> его удаление из списка
-                * Если изменение в уже добавленный диапазаон -> замена значений на новые
-                */
-
                 this.filtersScrollPage = 0
 
+                if (param.includes('diapason;') || param.includes('price;')) {
+                    let checkDiapason = param.substr(0, param.lastIndexOf(':'))
 
-                //console.log(param)
-
-
-                let checkDiapason = param.substr(0, param.lastIndexOf(':'))
-
-
-                for (let filter in this.filtersQueue) {
-                    if (this.filtersQueue[filter].includes(checkDiapason)) {
-                        this.filtersQueue.splice(this.filtersQueue.indexOf(this.filtersQueue[filter]), 1);
+                    for (let filter in this.filtersQueue) {
+                        if (this.filtersQueue[filter].includes(checkDiapason)) {
+                            this.filtersQueue.splice(this.filtersQueue.indexOf(this.filtersQueue[filter]), 1);
+                        }
                     }
                 }
 
-                if (!this.filtersQueue.includes(param)) {
-                    this.filtersQueue.push(param)
+                if (this.filtersQueue.includes(param)) {
+                    console.log('удаление из массива')
+                    this.filtersQueue.splice(this.filtersQueue.indexOf(param), 1);
                 }
-                else this.filtersQueue.splice(this.filtersQueue.indexOf(param), 1);
+                else this.filtersQueue.push(param)
 
-                //console.log(this.filtersQueue)
+                console.log(this.filtersQueue)
 
                 const filterURL = '/api/products/filter' + this.requestGroup + '/' + this.filtersScrollPage
-                console.log(filterURL)
-
                 axios.post(filterURL, this.filtersQueue).then(response => {
                     const page = response.data[0]
                     const filtersCheckList = response.data[1]
@@ -391,79 +345,10 @@
                     this.products = page.content
                     this.totalPages = page.totalPages
                     this.totalProductsFound = page.totalElements
+                    this.filtersChecklist = filtersCheckList
 
-                    this.defaultFiltersChecklist = filtersCheckList
-                    //console.log(this.defaultFiltersChecklist)
-
-
-                    ///Пройтись по всем checkbox и если name не входит в checklist то this disabled
-                    /*$("input:checkbox[name=type]:checked").each(function(){
-                        //yourArray.push($(this).val());
-                        console.log($(this).val())
-                    });
-*/
-
-                    //event.target.disabled = true;
-
-
-                    //console.log(this.filtersParams)
-
-                    this.filtersParams.forEach(value => {
-
-
-                        if (this.defaultFiltersChecklist.includes(value.toString().toLowerCase())) {
-                            //console.log(value)
-
-                        }
-
-                    })
-
-
-                    /*this.filtersParams.map(x => {
-                        //if (x.checked) return x.val
-                        console.log(x.val)
-                    })*/
-                    //console.log("Values of checked items: ", ret)
+                    console.log(this.filtersChecklist)
                 })
-
-
-
-                //console.log(this.selectedParams)
-
-
-
-                /*if (param !== undefined)
-                {
-                    if (param.includes(':')) {
-                        let key = param.substr(0, param.indexOf(':'));
-                        let val = (param.substr(param.indexOf(':') + 1))
-                        const valArray = val.split(',').map(Number);
-                        this.selectedDiapasons[key] = val       /!*to filter API*!/
-                        this.diapasonValues.set(key, valArray)  /!*to input slider*!/
-                    }
-                    else {
-                        if (!this.selectedFeatures.includes(param)) this.selectedFeatures.push(param)
-                        else this.selectedFeatures.splice(this.selectedFeatures.indexOf(param), 1);
-                    }
-                }
-
-                this.filters['prices']   = this.priceRange
-                this.filters['brands']   = this.selectedBrands
-                this.filters['params']   = this.selectedParams
-                this.filters['features'] = this.selectedFeatures
-
-                let selectedDiapasons = []
-                for (const [key, value] of Object.entries(this.selectedDiapasons)) selectedDiapasons.push(key + ':' + value)
-                this.filters['selectedDiapasons'] = selectedDiapasons
-
-                console.log('/api/products/filter' + this.requestGroup)*/
-
-                /*const filterURL = '/api/products/filter' + this.requestGroup + '/' + this.filtersScrollPage
-                axios.post(filterURL, this.filters).then(response => {
-                    this.products = response.data.content
-                    this.totalPages = response.data.totalPages
-                    this.totalProductsFound = response.data.totalElements
-                })*/
             },
             hideFilters() {
                 this.showFilters = false
@@ -477,9 +362,3 @@
     }
 </script>
 
-<style scoped>
-    /*.btn-actv:active {
-        background-color: #e52d00;
-        color: #fafafa;
-    }*/
-</style>
