@@ -33,8 +33,108 @@ public class ProductService {
     private final OrderedProductRepo orderedProductRepo;
     private final PopularRepo popularRepo;
 
-    public Page<Product> getProductsByGroup(String group, Pageable pageable) {
-        return productRepo.findByProductGroupIgnoreCaseOrderByPicAsc(group, pageable);
+    /*Основной алгоритм фильтрации*/
+    public LinkedList<Object> filterProducts(List<?> filters, String group, Pageable pageable) {
+        List<Product> products = productRepo.findByProductGroupIgnoreCase(group);
+
+        for (Object filter : filters) {
+            products = filteringProducts(products, filter.toString());
+        }
+
+        String filterCheckList = createComputedFilterChecklist(products);
+
+        return productsPage(products, pageable, filterCheckList);
+    }
+
+    private List<Product> filteringProducts(List<Product> products, String filter) {
+        String filterKey  = substringBefore(filter, ";");
+        String filterName = substringAfter(filter, ";");
+
+        switch (filterKey) {
+            case "price": return filterProductsByPrice(products, filterName);
+            case "param": return filterProductsByParams(products, filterName);
+            case "brand": return filterProductsByBrands(products, filterName);
+            case "diapason": return filterProductsByDiapasons(products, filterName);
+            default: return products;
+        }
+    }
+
+    private List<Product> filterProductsByParams(List<Product> products, String filterName) {
+        return products.stream().filter(product -> containsIgnoreCase(product.getShortAnnotation(), filterName)).collect(Collectors.toList());
+    }
+
+    private List<Product> filterProductsByBrands(List<Product> products, String filterName) {
+        return products.stream().filter(product -> containsIgnoreCase(product.getBrand(), filterName)).collect(Collectors.toList());
+    }
+
+    private List<Product> filterProductsByPrice(List<Product> products, String filterName) {
+        return products.stream().filter(product -> {
+            int minPrice = Integer.parseInt(substringBefore(filterName, ","));
+            int maxPrice = Integer.parseInt(substringAfter(filterName, ","));
+            return product.getFinalPrice() >= minPrice && product.getFinalPrice() <= maxPrice;
+        }).collect(Collectors.toList());
+    }
+
+    private List<Product> filterProductsByDiapasons(List<Product> products, String filterName) {
+        return products.stream().filter(product ->
+        {
+            String annotation = product.getShortAnnotation();
+            String diapasonKey = substringBefore(filterName, ":");
+
+            if (annotation.contains(diapasonKey))
+            {
+                String checkingFilter = substringBetween(annotation, diapasonKey, ";");
+                Double minFilter = Double.parseDouble(substringBetween(filterName, ":", ","));
+                Double maxFilter = Double.parseDouble(substringAfter(filterName, ","));
+                double checkingValue = Double.parseDouble(substringAfter(checkingFilter, ":").replaceAll(",","."));
+
+                if (minFilter == null || maxFilter == null) return false;
+
+                return checkingValue >= minFilter && checkingValue <= maxFilter;
+            }
+            return false;
+        }).collect(Collectors.toList());
+    }
+
+    private LinkedList<Object> productsPage(List<Product> products, Pageable pageable, String filterCheckList) {
+        try{
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), products.size());
+            Page<Product> page = new PageImpl<>(products.subList(start, end), pageable, products.size());
+
+            LinkedList<Object> payload = new LinkedList<>();
+            payload.add(page);
+            payload.add(filterCheckList);
+            return payload;
+        }
+        catch (IllegalArgumentException e) {
+            e.getStackTrace();
+        }
+        return null;
+    }
+
+    public List<Product> searchProducts(String searchRequest) {
+        List<Product> products =  productRepo.findAll();
+
+        if (!searchRequest.contains(" ")) {
+
+            products = products.stream()
+                    .filter(product -> containsIgnoreCase(product.getSearchName(), searchRequest))
+                    .limit(10)
+                    .collect(Collectors.toList());
+        }
+        else
+        {
+            String[] requests = searchRequest.split(" ");
+            for (String request : requests) {
+                log.info("\nreq: " + request);
+                products = products.stream()
+                        .filter(product -> containsIgnoreCase(product.getSearchName(), request))
+                        .collect(Collectors.toList());
+            }
+            products = products.stream().limit(10).collect(Collectors.toList());
+        }
+        return products;
     }
 
     /*Создать фильтры для группы products*/
@@ -142,6 +242,7 @@ public class ProductService {
         return filtersList;
     }
 
+    /// ОБЪЕДЕНИТЬ
     public String/*Set<String>*/ createDefaultFilterChecklist(String group) {
         List<Product> products = productRepo.findProductsByProductGroupIgnoreCase(group);
         Set<String> checklist = new HashSet<>();
@@ -156,7 +257,6 @@ public class ProductService {
         //log.info(checklist.toString());
         return checklist.toString().toLowerCase();
     }
-
     private String createComputedFilterChecklist(List<Product> products) {
         Set<String> checklist = new HashSet<>();
 
@@ -244,229 +344,10 @@ public class ProductService {
         return productRepo.findByProductID(productID);
     }
 
-    /*Основной алгоритм фильтрации*/
-    public LinkedList<Object> filterProducts(List<?> filters, String group, Pageable pageable) {
-        List<Product> products = productRepo.findByProductGroupIgnoreCase(group);
-
-
-        /*log.info(products.toString());
-        log.info(products.size() + "");*/
-
-        System.out.println();
-        filters.forEach(o -> log.info(o.toString()));
-        System.out.println();
-
-        for (Object filter : filters) {
-            products = filteringProducts(products, filter.toString());
-        }
-
-        /*log.info(products.toString());
-        log.info(products.size() + "");*/
-
-        //log.info(products.toString());
-
-        products.forEach(product -> log.info(product.toString()));
-        log.info(products.size() + "");
-
-        String filterCheckList = createComputedFilterChecklist(products);
-
-        return productsPage(products, pageable, filterCheckList);
-
-
-        /*
-        Коллекция с фильтрами LinkedList наполняется и убирается, фильтруется для каждого фильтра в ней
-        Новый фильтр добавляется к уже существующему друг за другом
-        При снятии фильтр убирается из списка
-        *
-        При каждой фильтрации формирование нового checkList,
-        Сверка уже default списка фильтров с новым, если старый не присутствует в новом, то старый :disabled
-        Выводить фильтры от rbt и подставлять синонимы по ключам из json
-        *
-        for (map.entry filter : filters)
-        */
-        /*
-         * Убрать пыстые массивы из объекта фильтров
-         * */
-        //filters.forEach((s, strings) -> log.info(s + " : " + Arrays.toString(strings)));
-
-
-
-       /* /// Basic filtration algorithm
-        try
-        {
-            //Price filters
-            products = products.stream().filter(product ->
-            {
-                String[] priceFilters = filters.get("prices");
-                int minPrice = Integer.parseInt(priceFilters[0].trim());
-                int maxPrice = Integer.parseInt(priceFilters[1].trim());
-                return product.getFinalPrice() >= minPrice && product.getFinalPrice() <= maxPrice;
-            }).collect(Collectors.toList());
-
-            //Brands filters
-            if (filterHasContent(filters, "brands")) {
-                products = products.stream().filter(product ->
-                {
-                    String brandFilters = Arrays.toString(filters.get("brands"));
-                    return containsIgnoreCase(brandFilters, product.getBrand().trim());
-                }).collect(Collectors.toList());
-            }
-
-            //Diapasons filters
-            if (filterHasContent(filters, "selectedDiapasons")) {
-                products = products.stream().filter(product ->
-                {
-                    String[] selectedDiapasons = filters.get("selectedDiapasons");
-                    String annotation = product.getShortAnnotation();
-
-                    for (String diapason : selectedDiapasons)
-                    {
-                        String diapasonKey  = substringBefore(diapason, ":");
-                        Double minimum = Double.parseDouble(substringBetween(diapason, ":",","));
-                        Double maximum = Double.parseDouble(substringAfter(diapason, ","));
-
-                        if (minimum == null || maximum == null) return false;
-
-                        if (annotation.contains(diapasonKey)) {
-                            String parseValue = substringBetween(annotation, diapasonKey, ";");
-                            if (parseValue.contains(": ")) parseValue = substringAfter(parseValue, ": ");
-
-                            Double checkVal = Double.parseDouble(parseValue.replaceAll(",","."));
-                            if (checkVal == null || checkVal < minimum || checkVal > maximum) return false;
-                        }
-                    }
-                    return true;
-                }).collect(Collectors.toList());
-            }
-
-            //Фильтры по параметрам
-            if (filterHasContent(filters, "params")) {
-                products = products.stream().filter(product ->
-                {
-                    String annotation = product.getShortAnnotation();
-
-                    for (String param : filters.get("params")) {
-                        if (containsIgnoreCase(annotation, param)) return true;
-                    }
-                    return false;
-                }).collect(Collectors.toList());
-            }
-
-            //Фильтры по особенностям
-            if (filterHasContent(filters, "features")) {
-                products = products.stream().filter(product ->
-                {
-                    String annotation = product.getShortAnnotation();
-                    for (String feature : filters.get("features")) {
-                        if (containsIgnoreCase(annotation, feature)) return true;
-                    }
-                    return false;
-                }).collect(Collectors.toList());
-            }
-
-            products.sort(Comparator.comparingInt(Product::getFinalPrice).thenComparing(Product::getPic));
-        }
-        catch (NullPointerException | NumberFormatException e) {
-            e.printStackTrace();
-        }
-
-        return null;
-        //return productsPage(products, pageable);*/
+    public Page<Product> getProductsByGroup(String group, Pageable pageable) {
+        return productRepo.findByProductGroupIgnoreCaseOrderByPicAsc(group, pageable);
     }
 
-    private List<Product> filteringProducts(List<Product> products, String filter) {
-        String filterKey  = substringBefore(filter, ";");
-        String filterName = substringAfter(filter, ";");
-
-        switch (filterKey) {
-            case "price": return filterProductsByPrice(products, filterName);
-            case "param": return filterProductsByParams(products, filterName);
-            case "brand": return filterProductsByBrands(products, filterName);
-            case "diapason": return filterProductsByDiapasons(products, filterName);
-            default: return products;
-        }
-    }
-
-    private List<Product> filterProductsByParams(List<Product> products, String filterName) {
-
-        log.info(filterName);
-
-        return products.stream().filter(product -> containsIgnoreCase(product.getShortAnnotation(), filterName)).collect(Collectors.toList());
-    }
-
-    private List<Product> filterProductsByBrands(List<Product> products, String filterName) {
-        return products.stream().filter(product -> containsIgnoreCase(product.getBrand(), filterName)).collect(Collectors.toList());
-    }
-
-    private List<Product> filterProductsByPrice(List<Product> products, String filterName) {
-        return products.stream().filter(product -> {
-            int minPrice = Integer.parseInt(substringBefore(filterName, ","));
-            int maxPrice = Integer.parseInt(substringAfter(filterName, ","));
-            return product.getFinalPrice() >= minPrice && product.getFinalPrice() <= maxPrice;
-        }).collect(Collectors.toList());
-    }
-
-    private List<Product> filterProductsByDiapasons(List<Product> products, String filterName) {
-        return products.stream().filter(product ->
-        {
-            String annotation = product.getShortAnnotation();
-            String diapasonKey = substringBefore(filterName, ":");
-
-            if (annotation.contains(diapasonKey))
-            {
-                String checkingFilter = substringBetween(annotation, diapasonKey, ";");
-                Double minFilter = Double.parseDouble(substringBetween(filterName, ":", ","));
-                Double maxFilter = Double.parseDouble(substringAfter(filterName, ","));
-                double checkingValue = Double.parseDouble(substringAfter(checkingFilter, ":").replaceAll(",","."));
-
-                if (minFilter == null || maxFilter == null) return false;
-
-                return checkingValue >= minFilter && checkingValue <= maxFilter;
-            }
-            return false;
-        }).collect(Collectors.toList());
-    }
-
-    private LinkedList<Object> productsPage(List<Product> products, Pageable pageable, String filterCheckList) {
-        try{
-            int start = (int) pageable.getOffset();
-            int end = Math.min((start + pageable.getPageSize()), products.size());
-            Page<Product> page = new PageImpl<>(products.subList(start, end), pageable, products.size());
-
-            LinkedList<Object> payload = new LinkedList<>();
-            payload.add(page);
-            payload.add(filterCheckList);
-            return payload;
-        }
-        catch (IllegalArgumentException e) {
-            e.getStackTrace();
-        }
-        return null;
-    }
-
-    public List<Product> searchProducts(String searchRequest) {
-        List<Product> products =  productRepo.findAll();
-
-        if (!searchRequest.contains(" ")) {
-
-            products = products.stream()
-                    .filter(product -> containsIgnoreCase(product.getSearchName(), searchRequest))
-                    .limit(10)
-                    .collect(Collectors.toList());
-        }
-        else
-        {
-            String[] requests = searchRequest.split(" ");
-            for (String request : requests) {
-                log.info("\nreq: " + request);
-                products = products.stream()
-                        .filter(product -> containsIgnoreCase(product.getSearchName(), request))
-                        .collect(Collectors.toList());
-            }
-            products = products.stream().limit(10).collect(Collectors.toList());
-        }
-        return products;
-    }
 
     public void test() {
 

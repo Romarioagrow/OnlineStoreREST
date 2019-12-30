@@ -3,7 +3,7 @@
         <v-card outlined class="mx-2 mt-3 d-flex flex-column" width="300">
 
             <div class="p-3">
-                <a @mouseover="this.style.cursor='pointer'">
+                <a>
                     <v-img class="white--text" contain height="150px" :src="product.pic"  alt="Bad Link" @click.stop="picDialog = true"></v-img>
 
                     <!--AdminMode-->

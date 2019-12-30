@@ -198,7 +198,6 @@
                 totalProductsFound: 0,
                 scrollPage: 1,
                 filtersScrollPage: 0,
-                filters: {},
                 showFiltersButtonToolbar: false,
                 loadingMoreProducts: false,
                 filtersChecklist: [],
@@ -255,12 +254,13 @@
                 const isBottomOfScreen = el.scrollTop + window.innerHeight === el.offsetHeight
 
                 if(isBottomOfScreen) {
-                    //console.log('bottomLoad')
+                    console.log('bottomLoad')
 
-                    if (Object.keys(this.filters).length === 0) {
+                    if (Object.keys(this.filtersQueue).length === 0) {
                         if (this.products.length >=15 ) {
                             this.loadingMoreProducts = true
                         }
+
                         axios.get('/api/products/group'+this.requestGroup + '/' + this.scrollPage).then(response => {
                             //console.log(response.data.content)
                             this.products = this.products.concat(response.data.content)
@@ -272,14 +272,16 @@
                     {
                         if (this.products.length >=15 ) {
                             this.loadingMoreProducts = true
-                        }
-                        this.filtersScrollPage+=1
-                        const filterURL = '/api/products/filter' + this.requestGroup + '/' + this.filtersScrollPage
-                        axios.post(filterURL, this.filters).then(response => {
-                            this.products = this.products.concat(response.data.content)
-                            this.loadingMoreProducts = false
-                        })
 
+                            this.filtersScrollPage+=1
+                            const filterURL = '/api/products/filter' + this.requestGroup + '/' + this.filtersScrollPage
+
+                            axios.post(filterURL, this.filtersQueue).then(response => {
+                                console.log(response.data[0].content)
+                                this.products = this.products.concat(response.data[0].content)
+                                this.loadingMoreProducts = false
+                            })
+                        }
                     }
                 }
             }
@@ -306,7 +308,6 @@
         },
         methods: {
             checkFilterInCheckList(value) {
-                console.log(value)
                 const val = value.toString().toLowerCase().trim()
                 return !this.filtersChecklist.includes(val)
             },
@@ -346,8 +347,6 @@
                     this.totalPages = page.totalPages
                     this.totalProductsFound = page.totalElements
                     this.filtersChecklist = filtersCheckList
-
-                    console.log(this.filtersChecklist)
                 })
             },
             hideFilters() {
