@@ -22,7 +22,7 @@ public interface ProductRepo extends JpaRepository<Product, String> {
 
     List<Product> findProductsByProductGroupIgnoreCase(String productGroup);
 
-    List<Product> findBySupplierAndShortModelNameIgnoreCase(String supplier, String shortModel);
+    List<Product> findBySupplierAndBrandAndShortModelNameIgnoreCase(String supplier, String brand, String shortModel);
 
     Page<Product> findByProductGroupIgnoreCaseOrderByPicAsc(String group, Pageable pageable);
 }

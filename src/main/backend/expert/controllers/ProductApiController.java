@@ -52,13 +52,14 @@ public class ProductApiController {
         return productService.searchProducts(searchRequest);
     }
 
-    @GetMapping("/getRecentProducts")
+    /*@GetMapping("/getRecentProducts")
     private List<OrderedProduct> getRecentProducts() {
         return productService.getRecentProducts();
-    }
+    }*/
 
     @GetMapping("/getPopularProducts")
     private List<Product> getPopularProducts() {
+        log.info("pp");
         return productService.getPopularProducts();
     }
 

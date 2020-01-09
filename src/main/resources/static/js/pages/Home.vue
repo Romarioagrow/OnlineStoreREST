@@ -62,7 +62,6 @@
                                         </tbody>
                                     </v-simple-table>
                                 </v-card-actions>
-
                             </v-card>
                         </v-dialog>
                     </div>

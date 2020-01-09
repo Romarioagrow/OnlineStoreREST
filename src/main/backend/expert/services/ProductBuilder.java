@@ -45,24 +45,16 @@ public class ProductBuilder {
     private final BrandsRepo brandsRepo;
     private final OrderRepo orderRepo;
 
-    /*
-    * Два файла excel в один и итерация по общему списку*/
-
-    public void updateProductsDB(MultipartFile excelFile) {
+    public void updateProductsDB(ArrayList<MultipartFile> supplierCatalogs) {
         try
         {
-            System.out.println();
-            log.info(excelFile.getOriginalFilename());
+            parseToOriginalProducts(supplierCatalogs);
 
-            parseSupplierFile(excelFile);
-
-            matchProductDetails();
+            matchProducts();
 
             resolveDuplicates();
 
-            resolveAvailable();
-
-            checkProductGroupCorrect();
+            checkProductsCorrect();
 
             mapCatalogJSON();
 
@@ -76,31 +68,34 @@ public class ProductBuilder {
     }
 
     /*Обновление данных таблицы поставщиков*/
-    private void parseSupplierFile(MultipartFile excelFile) {
-        if (!Objects.requireNonNull(excelFile.getOriginalFilename()).isEmpty())
+    private void parseToOriginalProducts(ArrayList<MultipartFile> supplierCatalogs) throws IOException {
+        try
         {
-            log.info("Парсинг: " + excelFile.getOriginalFilename());
-            try
+            for (MultipartFile excelFile : supplierCatalogs)
             {
+                System.out.println();
+                log.info("Парсинг: " + excelFile.getOriginalFilename());
+
                 int countCreate = 0, countUpdate = 0;
                 boolean supplierRBT = excelFile.getOriginalFilename().contains("СП2");
 
-                /// openBook(excelFile)
-                //XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream());
                 XSSFSheet sheet = new XSSFWorkbook(excelFile.getInputStream()).getSheetAt(0);
 
                 for (Row row : sheet)
                 {
-                    if (lineIsCorrect(row, supplierRBT)) {
+                    if (lineIsCorrect(row, supplierRBT))
+                    {
                         String productID = resolveProductID(supplierRBT, row);
 
                         /*Обновить существущий OriginalProduct*/
-                        if (originalProductExists(productID)) {
+                        if (originalProductExists(productID))
+                        {
                             updateOriginalProduct(row, productID, supplierRBT);
                             countUpdate++;
                         }
                         /*Создать OriginalProduct*/
-                        else {
+                        else
+                        {
                             createOriginalProduct(row, productID, supplierRBT);
                             countCreate++;
                         }
@@ -110,74 +105,69 @@ public class ProductBuilder {
                 log.info("Создано: " + countCreate);
                 log.info("Обновлено: " + countUpdate);
             }
-            catch (IOException ex) {
-                ex.printStackTrace();
-            }
-            catch (OLE2NotOfficeXmlFileException e) {
-                log.warning("Формат Excel документа должен быть XLSX!");
-            }
+        }
+        catch (OLE2NotOfficeXmlFileException e) {
+            log.warning("Формат Excel документа должен быть XLSX!");
         }
     }
 
-    /*Создать Product для вывода на сайт*/
-    private void matchProductDetails() throws FileNotFoundException {
+    /*Создать оснвоной Product для вывода и работы на клиенте*/
+    private void matchProducts() {
+        clearProductsForUpdate();
         log.info("Маппинг группы и параметров...");
 
-        int countJSON = 0, countDefault = 0;
         List<OriginalProduct> originalProducts = originalRepo.findByUpdateDate(LocalDate.now());
-        LinkedHashMap<String, String> aliases = jsonConfig.aliasesMap();
 
-        /*Для всех OriginalProduct из сегодняшнего каталога*/
-        for (OriginalProduct originalProduct : originalProducts)
-        {
-            String productID = originalProduct.getProductID();
-            Product product = productRepo.findByProductID(productID);
-            if (product == null) {
-                product = new Product();
-                product.setProductID(productID);
-            }
-
-            /*Разметить главные параметры для Product из заданного json файла-разметки*/
-            String originalGroup = originalProduct.getOriginalType();
-            mapping: for (Map.Entry<String,String> aliasEntry : aliases.entrySet())
+        originalProducts.forEach(originalProduct -> {
+            try
             {
-                for (String alias : aliasEntry.getKey().split(","))
-                {
-                    if (StringUtils.startsWithIgnoreCase(originalGroup, alias)) {
-                        product = matchProductJSON(aliasEntry, product);
-                        countJSON++;
-                        break mapping;
-                    }
-                }
-            }
+                /*Разметить главные параметры для Product из заданного json файла-разметки*/
+                Product product = matchProduct(originalProduct);
 
-            /*Разметить главные параметры для оствшихся без json разметки Product*/
-            if (!product.getMappedJSON()) {
-                product = defaultProductMatch(originalProduct, product);
-                countDefault++;
-            }
+                /*Разметить операционные данные Product*/
+                product = resolveProductsDetails(originalProduct, product);
 
-            /*Разметить операционные данные для всех сегодняшних Product*/
-            product = resolveProductsDetails(originalProduct, product);
-            productRepo.save(product);
-        }
-        log.info("JSON разметка: " + countJSON);
-        log.info("Auto разметка: " + countDefault);
+                productRepo.save(product);
+            }
+            catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        });
     }
 
-    private Product resolveProductsDetails(OriginalProduct originalProduct, Product product) throws NumberFormatException {
+    private Product matchProduct(OriginalProduct originalProduct) throws FileNotFoundException {
+        String productID = originalProduct.getProductID();
+        String originalType = originalProduct.getOriginalType();
+
+        LinkedHashMap<String, String> aliases = jsonConfig.aliasesMap();
+
+        /*Разметить данные из json каталога*/
+        for (Map.Entry<String,String> aliasEntry : aliases.entrySet())
+        {
+            for (String alias : aliasEntry.getKey().split(","))
+            {
+                /*Совпадение в каталоге, разметка*/
+                if (StringUtils.startsWithIgnoreCase(originalType, alias)) {
+                    return matchProductJSON(aliasEntry, productID);
+                }
+            }
+        }
+
+        /*Если нет совпадений в json каталоге, разметить из данных поставщика*/
+        return matchFromOriginalProduct(originalProduct, productID);
+    }
+
+    private Product resolveProductsDetails(OriginalProduct originalProduct, Product product) {
         boolean supplierRBT   = originalProduct.getSupplier().equals("RBT");
 
         String singleTypeName = product.getSingleTypeName();
         String originalBrand  = originalProduct.getOriginalBrand();
         String originalName   = originalProduct.getOriginalName();
 
-
         String modelName      = resolveModelName(originalProduct).toUpperCase().trim();
         String annotation     = resolveAnnotation(originalProduct, supplierRBT);
         String shortAnnotation = resolveShortAnnotation(annotation, supplierRBT);
         String formattedAnnotation = shortAnnotation.replaceAll(";", "<br>");
-
         String fullName       = resolveFullName(originalName, modelName, singleTypeName, originalBrand).trim();
         String groupBrandName = resolveBrandName(singleTypeName, originalBrand).trim();
         String searchName     = resolveSearchName(modelName, singleTypeName, originalBrand).trim();
@@ -206,11 +196,12 @@ public class ProductBuilder {
         originalProduct.setFinalPrice(finalPrice);
         originalProduct.setBonus(bonus);
         originalRepo.save(originalProduct);
+
         return product;
     }
 
     /*Пост-обработка разметки*/
-    private void checkProductGroupCorrect() {
+    private void checkProductsCorrect() {
         log.info("checkProductGroupCorrect...");
 
         Thread thread = new Thread(() -> productRepo.findByProductGroupIgnoreCase("Клавиатуры, мыши, комплекты").forEach(product -> {
@@ -239,10 +230,10 @@ public class ProductBuilder {
             productRepo.save(product);
         }));
         trimOriginalType.start();
-
         /*<!--тип из аннотации в productType, если нет, то singleType-->*/
     }
 
+    /*Проверка товаров в заказах на наличие после обновления базы*/
     private void checkOrdersForProductAvailable() {
         log.info("checkOrdersForProductAvailable...");
 
@@ -303,27 +294,16 @@ public class ProductBuilder {
                     Map<String, String> constantPics = jsonConfig.groupsMap();
 
                     pic = constantPics.get(productGroup);
-                    if (pic != null) {
-                        group.add(productGroup);
-                        group.add(pic);
-                    }
-                    else
-                    {
+                    if (pic == null) {
                         Product product = productRepo.findFirstByProductGroupAndPicIsNotNullAndPicNotContains(productGroup, "legprom71");
                         pic = product != null ? product.getPic() : "D:\\Projects\\Rest\\src\\main\\resources\\static\\pics\\toster.png";
-                        group.add(productGroup);
-                        group.add(pic);
                     }
-
-                    /*Product product = productRepo.findFirstByProductGroupAndPicIsNotNullAndPicNotContains(productGroup, "legprom71");
-                    String pic = product != null ? product.getPic() : "D:\\Projects\\Rest\\src\\main\\resources\\static\\pics\\toster.png";
                     group.add(productGroup);
-                    group.add(pic);*/
+                    group.add(pic);
 
                     productGroups.add(group);
                 }
                 catch (NullPointerException | FileNotFoundException e) {
-                    //log.info("Нет ссылки для группы: " + productGroup);
                     e.printStackTrace();
                 }
             });
@@ -433,7 +413,8 @@ public class ProductBuilder {
     }
 
     /*Обратока вычисляемых значений для товара*/
-    private Product matchProductJSON(Map.Entry<String, String> aliasEntry, Product product) {
+    private Product matchProductJSON(Map.Entry<String, String> aliasEntry, String productID) {
+        Product product = new Product(productID);
         try
         {
             String[] productDetails = aliasEntry.getValue().split(",");
@@ -448,14 +429,15 @@ public class ProductBuilder {
             product.setDefaultCoefficient(defaultCoefficient);
             product.setSingleTypeName(singleTypeName);
             product.setMappedJSON(true);
-            return product;
         }
         catch (NullPointerException | ArrayIndexOutOfBoundsException | NumberFormatException e) {
             e.printStackTrace();
         }
         return product;
     }
-    private Product defaultProductMatch(OriginalProduct originalProduct, Product product) {
+    private Product matchFromOriginalProduct(OriginalProduct originalProduct, String productID) {
+        Product product = new Product(productID);
+
         Double defaultCoefficient   = 1.2;
         String defaultCategory      = resolveDefaultCategory(originalProduct.getOriginalCategory());
         String defaultProductGroup  = resolveDefaultGroup(originalProduct.getOriginalType());
@@ -507,8 +489,6 @@ public class ProductBuilder {
         return shortModelName.replaceAll("-", "").replaceAll("_", "").replaceAll("_", "").replaceAll("\\(", "").replaceAll("\\)", "").replaceAll("/", "").toLowerCase();
     }
 
-
-
     private String resolveAnnotation(OriginalProduct originalProduct, boolean supplierRBT) {
         String annotation;
         if (supplierRBT) {
@@ -539,7 +519,7 @@ public class ProductBuilder {
         return singleTypeName.concat(" ").concat(StringUtils.capitalize(originalBrand.toLowerCase()));
     }
 
-    private Integer resolveBonus(Integer finalPrice) throws NullPointerException {
+    private Integer resolveBonus(Integer finalPrice) {
         int bonus = finalPrice * 3 / 100;
         String bonusToRound = String.valueOf(bonus);
 
@@ -552,14 +532,20 @@ public class ProductBuilder {
         }
     }
 
-    private Integer resolveFinalPrice(OriginalProduct originalProduct, Double coefficient) throws NumberFormatException {
+    private Integer resolveFinalPrice(OriginalProduct originalProduct, Double coefficient) {
+        int finalPrice;
+
         if (productWithUniquePrice(originalProduct)) {
-            return Integer.parseInt(StringUtils.deleteWhitespace(brandsRepo.findByProductID(originalProduct.getProductID()).getFinalPrice()));
+            finalPrice = Integer.parseInt(StringUtils.deleteWhitespace(brandsRepo.findByProductID(originalProduct.getProductID()).getFinalPrice()));
         }
-        else if (originalProduct.getPriceModified()) {
-            return originalProduct.getModifiedPrice();
+        else if (originalProduct.getPriceModified() != null) {
+            finalPrice = originalProduct.getModifiedPrice();
         }
-        else return makeRoundFinalPrice(originalProduct.getOriginalPrice(), coefficient);
+        else {
+            finalPrice = makeRoundFinalPrice(originalProduct.getOriginalPrice(), coefficient);
+        }
+
+        return finalPrice;
     }
 
     private boolean productWithUniquePrice(OriginalProduct originalProduct) {
@@ -572,33 +558,33 @@ public class ProductBuilder {
     }
 
     private Integer makeRoundFinalPrice(String originalPrice, Double coefficient) {
-        try
-        {
-            int finalPrice = (int) (Double.parseDouble(originalPrice) * coefficient);
-            String finalPriceToRound = String.valueOf(finalPrice);
+        int finalPrice = (int) (Double.parseDouble(originalPrice) * coefficient);
+        String finalPriceToRound = String.valueOf(finalPrice);
 
-            if (finalPrice > 0 && finalPrice <= 10) {
-                return 10;
-            }
-            else if (finalPrice > 10 && finalPrice < 1000) {
-                finalPriceToRound = finalPriceToRound.substring(0, finalPriceToRound.length()-1).concat("9");
-                return Integer.parseInt(finalPriceToRound);
-            }
-            else if (finalPrice > 1000) {
-                finalPriceToRound = finalPriceToRound.substring(0, finalPriceToRound.length()-2).concat("90");
-                return Integer.parseInt(finalPriceToRound);
-            }
-            else return finalPrice;
+        if (finalPrice > 0 && finalPrice <= 10) {
+            return 10;
         }
-        catch (NumberFormatException e) {
-            e.printStackTrace();
+        else if (finalPrice > 10 && finalPrice < 1000) {
+            finalPriceToRound = finalPriceToRound.substring(0, finalPriceToRound.length()-1).concat("9");
+            return Integer.parseInt(finalPriceToRound);
         }
-        return (int) (Double.parseDouble(originalPrice) * 1.2);
+        else if (finalPrice > 1000) {
+            finalPriceToRound = finalPriceToRound.substring(0, finalPriceToRound.length()-2).concat("90");
+            return Integer.parseInt(finalPriceToRound);
+        }
+        else return finalPrice;
     }
 
     private String resolveFullName(String originalName, String modelName, String singleTypeName, String originalBrand) {
-        String fullName = singleTypeName.concat(" ").concat(StringUtils.capitalize(originalBrand.toLowerCase())).concat(" ").concat(modelName);
-        return !fullName.isEmpty() ? fullName : StringUtils.substringBefore(originalName, ", ");
+
+        String fullName = singleTypeName.trim().concat(" ").concat(StringUtils.capitalize(originalBrand.toLowerCase()).trim()).concat(" ").concat(modelName.trim());
+
+        if (fullName.isEmpty()) {
+            fullName = StringUtils.capitalize(StringUtils.substringBefore(originalName, ", "));
+        }
+
+        return StringUtils.capitalize(fullName);
+
     }
 
     private String resolveModelName(OriginalProduct originalProduct) {
@@ -620,61 +606,58 @@ public class ProductBuilder {
         else if (originalName.contains(originalBrand)) {
             return StringUtils.substringAfter(originalName, originalBrand);
         }
-        else return "No modelName";
+        else return "";
     }
 
-    /// Оптимизировать скорость!
     private void resolveDuplicates() {
         log.info("Обработка дубликатов...");
-        int count = 0;
 
-        /// delete
-        productRepo.findAll().forEach(product -> {
-            product.setIsDuplicate(null);
-            product.setHasDuplicates(null);
-            productRepo.save(product);
-        });
+        int count = 0;
+        int before = productRepo.findAll().size();
 
         List<Product> products = productRepo.findBySupplier("RBT");
-        for (Product product : products)
-        {
-            /*product.setIsDuplicate(false);
-            product.setHasDuplicates(false);*/
+
+        for (Product product : products) {
 
             String shortModel = product.getShortModelName();
-            List<Product> duplicates = productRepo.findBySupplierAndShortModelNameIgnoreCase("RUSBT", shortModel);
+            String brand =  product.getBrand();
 
-            if (!duplicates.isEmpty())
-            {
-                duplicates.sort(Comparator.comparing(Product::getFinalPrice));
+            if (!shortModel.isEmpty()) {
 
-                for (Product duplicateProduct : duplicates)
+                List<Product> duplicates = productRepo.findBySupplierAndBrandAndShortModelNameIgnoreCase("RUSBT", brand, shortModel);
+
+                if (!duplicates.isEmpty())
                 {
-                    if (product.getFinalPrice() <= duplicateProduct.getFinalPrice()) {
-                        product.setHasDuplicates(true);
-                        duplicateProduct.setIsDuplicate(true);
+                    count++;
+                    duplicates.sort(Comparator.comparing(Product::getFinalPrice));
+
+                    /*System.out.println();
+                    log.info(product.getFullName() + " " + product.getFinalPrice());
+                    log.info("" + duplicates.size());
+                    duplicates.forEach(product1 -> {
+                        log.info(product1.getFullName());
+                        log.info(product1.getFinalPrice() + "");
+                    });*/
+
+                    if (product.getFinalPrice() >= duplicates.get(0).getFinalPrice()) {
+                        productRepo.deleteAll(duplicates);
                     }
-                    else {
-                        product.setIsDuplicate(true);
-                        duplicateProduct.setHasDuplicates(true);
+                    else
+                    {
+                        productRepo.delete(product);
+                        duplicates.stream().skip(1).forEach(productRepo::delete);
                     }
-                    productRepo.save(product);
-                    productRepo.save(duplicateProduct);
                 }
-                count++;
             }
-            /*else productRepo.save(product);*/
         }
         log.info("Товаров с дубликатами: " + count);
+        log.info("BEFORE: " + before );
+        log.info("AFTER: " + productRepo.findAll().size());
     }
 
-    private void resolveAvailable() {
-        log.info("Resolving available...");
-        productRepo.findAll().forEach(product -> {
-            if (!product.getUpdateDate().toString().equals(LocalDate.now().toString())) {
-                productRepo.delete(product);
-            }
-        });
+    private void clearProductsForUpdate() {
+        log.info("Очищение Products...");
+        productRepo.findAll().forEach(productRepo::delete);
     }
 
     public void updateBrandsPrice(MultipartFile file) {
@@ -793,6 +776,8 @@ public class ProductBuilder {
 
     public void test() {
         log.info("test");
+
+        resolveDuplicates();
     }
 
     public boolean downloadImage(Map<String, String> data) {

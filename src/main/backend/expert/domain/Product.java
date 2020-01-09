@@ -1,6 +1,8 @@
 package expert.domain;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDate;
@@ -8,6 +10,7 @@ import java.time.LocalDate;
 @Data
 @Entity
 @Table(name = "products")
+@NoArgsConstructor
 public class Product implements Serializable {
     @Id
     @Column(name = "product_id")
@@ -33,5 +36,9 @@ public class Product implements Serializable {
     private Boolean priceModified = false;
 
     @JsonIgnore
-    private Boolean isAvailable, uniquePrice, coefficientModified, isDuplicate, hasDuplicates, mappedJSON = false;
+    private Boolean isAvailable, uniquePrice, coefficientModified, mappedJSON = false;
+
+    public Product(String productID) {
+        this.productID = productID;
+    }
 }

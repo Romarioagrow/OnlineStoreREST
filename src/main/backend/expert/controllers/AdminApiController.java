@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +27,23 @@ public class AdminApiController {
     private final ProductBuilder productBuilder;
     private final OrderService orderService;
     private final ProductService productService;
+
+
+    @PostMapping("/updateDB")
+    private void updateDB(
+            @RequestParam("file[0]") MultipartFile file1,
+            @RequestParam("file[1]") MultipartFile file2
+    ){
+        log.info(file1.getOriginalFilename());
+        log.info(file2.getOriginalFilename());
+
+        ArrayList<MultipartFile> supplierCatalogs = new ArrayList<>();
+        supplierCatalogs.add(file1);
+        supplierCatalogs.add(file2);
+
+        productBuilder.updateProductsDB(supplierCatalogs);
+    }
+
 
     @PostMapping("/restoreDefaultPrice")
     private Product restoreDefaultPrice(@RequestBody String productID) {
@@ -79,10 +97,7 @@ public class AdminApiController {
         return user.isAdmin();
     }
 
-    @PostMapping("/uploadFileDB")
-    private void uploadProductsDBFile(@RequestParam("file") MultipartFile file) {
-        productBuilder.updateProductsDB(file);
-    }
+
 
     @PostMapping("/updateCatalog")
     private void updateProductsCatalog() {
@@ -109,8 +124,11 @@ public class AdminApiController {
     }
 
     @PostMapping("/test")
-    private void uploadProductsDBFile(@AuthenticationPrincipal User user) {
-        productService.test();
+    private void test(@AuthenticationPrincipal User user) {
+        //productService.test();
+
+        productBuilder.test();
+
     }
 }
 

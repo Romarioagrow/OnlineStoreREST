@@ -47,8 +47,6 @@ public class ProductService {
     }
 
     private List<Product> filteringProducts(List<Product> products, String filter) {
-        log.info(filter);
-
         String filterKey  = substringBefore(filter, ";");
         String filterName = substringAfter(filter, ";");
 
@@ -365,7 +363,10 @@ public class ProductService {
 
     public void test() {
 
-        Set<String> categoryGroups = new TreeSet<>();
+
+
+
+        /*Set<String> categoryGroups = new TreeSet<>();
         productRepo.findAll().forEach(product -> categoryGroups.add(product.getProductGroup()));
 
         Map<String, String> groups = new LinkedHashMap<>();
@@ -382,7 +383,7 @@ public class ProductService {
         }
         catch (IOException e) {
             e.printStackTrace();
-        }
+        }*/
     }
 
     public List<OrderedProduct> getRecentProducts() {
