@@ -34,13 +34,9 @@ public class AdminApiController {
             @RequestParam("file[0]") MultipartFile file1,
             @RequestParam("file[1]") MultipartFile file2
     ){
-        log.info(file1.getOriginalFilename());
-        log.info(file2.getOriginalFilename());
-
         ArrayList<MultipartFile> supplierCatalogs = new ArrayList<>();
         supplierCatalogs.add(file1);
         supplierCatalogs.add(file2);
-
         productBuilder.updateProductsDB(supplierCatalogs);
     }
 
@@ -97,13 +93,13 @@ public class AdminApiController {
         return user.isAdmin();
     }
 
-
-
     @PostMapping("/updateCatalog")
     private void updateProductsCatalog() {
-        try {
+        try
+        {
             productBuilder.mapCatalogJSON();
-        } catch (IOException | NullPointerException e) {
+        }
+        catch (IOException | NullPointerException e) {
             e.printStackTrace();
         }
     }
@@ -123,12 +119,14 @@ public class AdminApiController {
         return productBuilder.downloadImage(data);
     }
 
+    @PostMapping("/resetDB")
+    private void resetDB() {
+        productBuilder.resetDB();
+    }
+
     @PostMapping("/test")
     private void test(@AuthenticationPrincipal User user) {
-        //productService.test();
-
         productBuilder.test();
-
     }
 }
 

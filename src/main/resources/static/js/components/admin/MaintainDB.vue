@@ -39,39 +39,36 @@
                         <v-btn v-if="!updatingDB" color="success" v-on:click="uploadExcelFile()">Загрузить</v-btn>
                         <v-progress-circular v-else indeterminate color="primary"></v-progress-circular>
                     </v-card-actions>
-
-                    <!--<v-card-actions class="ml-5">
-                        <form enctype="multipart/form-data">
-                            <v-row class="mb-3"><input type="file" name="file"
-                                                       v-on:change="fileChange($event.target.files)"/></v-row>
-                            <v-row v-if="!updatingDB">
-                                <v-btn color="success" v-on:click="uploadExcelFile()">Загрузить</v-btn>
-                            </v-row>
-                            <v-row v-else>
-                                <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                            </v-row>
-                        </form>
-                    </v-card-actions>-->
                 </v-card>
             </v-col>
+
             <v-col>
                 <v-card>
-                    <v-card-title>Бренды Эксперт</v-card-title>
-                    <v-card-actions class="ml-5">
-                        <form enctype="multipart/form-data">
-                            <v-row class="mb-3"><input type="file" name="fileBrands"
-                                                       v-on:change="brandsFileChange($event.target.files)"/></v-row>
-                            <v-row v-if="!updatingBrands">
-                                <v-btn color="success" v-on:click="uploadBrandsPrice()">Загрузить бренд-прайс</v-btn>
-                            </v-row>
-                            <v-row v-else>
-                                <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                            </v-row>
-                        </form>
+                    <v-card-actions>
+                        <v-btn color="red" v-on:click="resetDB()">Сброс базы</v-btn>
                     </v-card-actions>
                 </v-card>
             </v-col>
         </v-row>
+
+        <v-row>
+            <v-card>
+                <v-card-title>Бренды Эксперт</v-card-title>
+                <v-card-actions class="ml-5">
+                    <form enctype="multipart/form-data">
+                        <v-row class="mb-3"><input type="file" name="fileBrands"
+                                                   v-on:change="brandsFileChange($event.target.files)"/></v-row>
+                        <v-row v-if="!updatingBrands">
+                            <v-btn color="success" v-on:click="uploadBrandsPrice()">Загрузить бренд-прайс</v-btn>
+                        </v-row>
+                        <v-row v-else>
+                            <v-progress-circular indeterminate color="primary"></v-progress-circular>
+                        </v-row>
+                    </form>
+                </v-card-actions>
+            </v-card>
+        </v-row>
+
         <v-row>
             <v-col>
                 <v-card class="mt-3">
@@ -148,6 +145,11 @@
             parsRUSBTPics() {
                 axios.post('admin/parsePicsRUSBT').then(console.log('pics parsed'));
             },
+
+            resetDB() {
+                axios.post('admin/resetDB').then(console.log('DB reset'));
+            },
+
             test() {
                 axios.post('admin/test').then(console.log('test ok'));
             }

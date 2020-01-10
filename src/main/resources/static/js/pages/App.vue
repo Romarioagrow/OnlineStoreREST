@@ -7,7 +7,7 @@
             </div>
         </v-content>
        <!-- <FooterDiv v-if="notProductsPage"></FooterDiv>-->
-        <FooterDiv></FooterDiv>
+        <!--<FooterDiv></FooterDiv>-->
     </v-app>
 </template>
 

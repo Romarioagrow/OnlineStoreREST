@@ -16,4 +16,8 @@ public interface OriginalRepo extends JpaRepository<OriginalProduct, String> {
     List<OriginalProduct> findByUpdateDate(LocalDate today);
 
     List<OriginalProduct> findByLinkToPicNotNull();
+
+    //http://rusbt.ru/catalog/3455/118960/
+
+    List<OriginalProduct> findByLinkToPicContains(String link);
 }

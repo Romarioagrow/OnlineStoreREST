@@ -80,7 +80,6 @@ public class ProductBuilder {
                 boolean supplierRBT = excelFile.getOriginalFilename().contains("СП2");
 
                 XSSFSheet sheet = new XSSFWorkbook(excelFile.getInputStream()).getSheetAt(0);
-
                 for (Row row : sheet)
                 {
                     if (lineIsCorrect(row, supplierRBT))
@@ -142,7 +141,7 @@ public class ProductBuilder {
         LinkedHashMap<String, String> aliases = jsonConfig.aliasesMap();
 
         /*Разметить данные из json каталога*/
-        for (Map.Entry<String,String> aliasEntry : aliases.entrySet())
+        for (Map.Entry<String, String> aliasEntry : aliases.entrySet())
         {
             for (String alias : aliasEntry.getKey().split(","))
             {
@@ -526,7 +525,8 @@ public class ProductBuilder {
         if (bonus > 0 && bonus <= 10) {
             return 10;
         }
-        else {
+        else
+        {
             bonusToRound = bonusToRound.substring(0, bonusToRound.length()-1).concat("0");
             return Integer.parseInt(bonusToRound);
         }
@@ -576,7 +576,6 @@ public class ProductBuilder {
     }
 
     private String resolveFullName(String originalName, String modelName, String singleTypeName, String originalBrand) {
-
         String fullName = singleTypeName.trim().concat(" ").concat(StringUtils.capitalize(originalBrand.toLowerCase()).trim()).concat(" ").concat(modelName.trim());
 
         if (fullName.isEmpty()) {
@@ -584,7 +583,6 @@ public class ProductBuilder {
         }
 
         return StringUtils.capitalize(fullName);
-
     }
 
     private String resolveModelName(OriginalProduct originalProduct) {
@@ -631,14 +629,6 @@ public class ProductBuilder {
                     count++;
                     duplicates.sort(Comparator.comparing(Product::getFinalPrice));
 
-                    /*System.out.println();
-                    log.info(product.getFullName() + " " + product.getFinalPrice());
-                    log.info("" + duplicates.size());
-                    duplicates.forEach(product1 -> {
-                        log.info(product1.getFullName());
-                        log.info(product1.getFinalPrice() + "");
-                    });*/
-
                     if (product.getFinalPrice() >= duplicates.get(0).getFinalPrice()) {
                         productRepo.deleteAll(duplicates);
                     }
@@ -657,7 +647,8 @@ public class ProductBuilder {
 
     private void clearProductsForUpdate() {
         log.info("Очищение Products...");
-        productRepo.findAll().forEach(productRepo::delete);
+        //productRepo.findAll().forEach(productRepo::delete);
+        productRepo.deleteAll();
     }
 
     public void updateBrandsPrice(MultipartFile file) {
@@ -699,7 +690,7 @@ public class ProductBuilder {
         /// findInBigBase();
 
         AtomicInteger count404 = new AtomicInteger(), countPic = new AtomicInteger(), countAnno = new AtomicInteger(), countInfo = new AtomicInteger();
-        List<OriginalProduct> originalProducts = originalRepo.findByLinkToPicNotNull(); /// not contains "no image"
+        List<OriginalProduct> originalProducts = originalRepo.findByLinkToPicContains("rusbt"); /// not contains "no image"
 
         System.out.println();
         log.info("Парсинг сайта картинок RUSBT");
@@ -776,7 +767,6 @@ public class ProductBuilder {
 
     public void test() {
         log.info("test");
-
         resolveDuplicates();
     }
 
@@ -843,5 +833,14 @@ public class ProductBuilder {
         originalRepo.save(originalProduct);
 
         return product;
+    }
+
+    public void resetDB() {
+        log.info("Resetting DB...");
+        originalRepo.findAll().forEach(originalProduct -> {
+            originalProduct.setUpdateDate(LocalDate.ofYearDay(2000, 1));
+            originalRepo.save(originalProduct);
+        });
+        log.info("Original DB reset");
     }
 }

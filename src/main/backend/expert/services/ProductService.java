@@ -1,9 +1,12 @@
 package expert.services;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
+import expert.domain.Product;
+import expert.dto.FiltersList;
 import expert.dto.OrderedProduct;
 import expert.dto.popular.Popular;
 import expert.dto.popular.PopularRepo;
 import expert.repos.OrderedProductRepo;
+import expert.repos.ProductRepo;
 import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
 import org.springframework.data.domain.Page;
@@ -11,18 +14,14 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import expert.domain.Product;
-import expert.dto.FiltersList;
-import expert.repos.ProductRepo;
 
-import java.io.File;
-import java.io.IOException;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import static org.apache.commons.lang3.StringUtils.*;
 
 @Log
@@ -139,7 +138,6 @@ public class ProductService {
         {
             String[] requests = searchRequest.split(" ");
             for (String request : requests) {
-                log.info("\nreq: " + request);
                 products = products.stream()
                         .filter(product -> containsIgnoreCase(product.getSearchName(), request))
                         .collect(Collectors.toList());
@@ -265,8 +263,6 @@ public class ProductService {
             String[] shortAnno = product.getShortAnnotation().split(";");
             checklist.addAll(Arrays.asList(shortAnno));
         });
-
-        //log.info(checklist.toString());
         return checklist.toString().toLowerCase();
     }
     private String createComputedFilterChecklist(List<Product> products) {
@@ -278,8 +274,6 @@ public class ProductService {
             String[] shortAnno = product.getShortAnnotation().split(";");
             checklist.addAll(Arrays.asList(shortAnno));
         });
-
-        //log.info(checklist.toString());
         return checklist.toString().toLowerCase();
     }
 
@@ -360,35 +354,14 @@ public class ProductService {
         return productRepo.findByProductGroupIgnoreCaseOrderByPicAsc(group, pageable);
     }
 
-
-    public void test() {
-
-
-
-
-        /*Set<String> categoryGroups = new TreeSet<>();
-        productRepo.findAll().forEach(product -> categoryGroups.add(product.getProductGroup()));
-
-        Map<String, String> groups = new LinkedHashMap<>();
-
-        categoryGroups.forEach(productGroup -> {
-            Product product = productRepo.findFirstByProductGroupAndPicIsNotNullAndPicNotContains(productGroup, "legprom71");
-            String pic = product != null ? product.getPic() : "D:\\Projects\\Rest\\src\\main\\resources\\static\\pics\\toster.png";
-
-            groups.put(productGroup, pic);
-        });
-
-        try {
-            new ObjectMapper().writeValue(new File("D:\\Projects\\Rest\\src\\main\\resources\\static\\js\\assets\\json\\groups.json"), groups);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }*/
-    }
-
     public List<OrderedProduct> getRecentProducts() {
+        List<OrderedProduct> recentProducts;
+
         int all = orderedProductRepo.findAll().size();
-        List<OrderedProduct> recentProducts = orderedProductRepo.findAll().stream().skip(all - 10).collect(Collectors.toList());
+        if (all == 0) return new ArrayList<>();
+        else if (all > 0 && all < 10) return orderedProductRepo.findAll();
+
+        recentProducts = orderedProductRepo.findAll().stream().skip(all - 10).collect(Collectors.toList());
         Collections.reverse(recentProducts);
         return recentProducts;
     }
