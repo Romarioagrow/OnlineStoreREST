@@ -59,6 +59,8 @@ public class ProductBuilder {
 
         checkOrdersForProductAvailable();
 
+        /// parseRUSBTParams();
+
         log.info("Update Complete! Products available: " + productRepo.findAll().size());
     }
 
@@ -461,7 +463,7 @@ public class ProductBuilder {
         }
     }
 
-    public void parsePicsRUSBT() {
+    public void parseRUSBTParams() {
         AtomicInteger count404 = new AtomicInteger();
         AtomicInteger countPic = new AtomicInteger();
         AtomicInteger countAnno = new AtomicInteger();
@@ -475,7 +477,7 @@ public class ProductBuilder {
 
         originalProducts.forEach(originalProduct ->
         {
-            Product product = productRepo.findByProductID("03_00008707");
+            Product product = productRepo.findByProductID(originalProduct.getProductID());
 
             String link = originalProduct.getLinkToPic();
             log.info(link);
@@ -528,6 +530,8 @@ public class ProductBuilder {
                 Thread parsInfo = new Thread(() ->
                 {
 
+                    /*исключить Деколь и установить modelName*/
+
                     Element productParams = page.getElementById("tabs-2");
                     Elements productInfo = page.getElementsByClass("bx_item_description");
                     Elements infoKeys = productParams.getElementsByClass("left_prop");
@@ -549,6 +553,9 @@ public class ProductBuilder {
                     originalProduct.setOriginalAnnotation(annotation);
                     originalProduct.setAnnotationFromRUSBT(aboutProduct);
                     originalProduct.setFormattedAnno(true);
+
+                    product.setAnnotation(annotation);
+                    //product.set
 
                     originalRepo.save(originalProduct);
                     productRepo.save(product);
@@ -922,5 +929,27 @@ public class ProductBuilder {
 
     public void test() {
         log.info("test");
+
+        originalRepo.findAll().forEach(originalProduct -> {
+            if (originalProduct.getSupplier().equals("RUSBT") && originalProduct.getOriginalPic() != null) {
+
+                System.out.println();
+                log.info(originalProduct.toString());
+                log.info(originalProduct.getOriginalPic());
+
+                String id = originalProduct.getProductID();
+                Product product = productRepo.findByProductID(id);
+                try {
+                    product.setPic(originalProduct.getOriginalPic());
+                    product.setPics(originalProduct.getPics());
+                    product.setAnnotation(originalProduct.getOriginalAnnotation());
+                    product.setHasFormattedAnno(true);
+                    productRepo.save(product);
+                }
+                catch (NullPointerException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 }

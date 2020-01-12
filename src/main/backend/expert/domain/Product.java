@@ -36,7 +36,7 @@ public class Product implements Serializable {
     private Boolean priceModified;
 
     @JsonIgnore
-    private Boolean isAvailable, uniquePrice, coefficientModified, mappedJSON = false;
+    private Boolean isAvailable, uniquePrice, coefficientModified, hasFormattedAnno, mappedJSON = false;
 
     public Product(String productID) {
         this.productID = productID;

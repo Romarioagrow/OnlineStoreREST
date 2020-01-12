@@ -108,7 +108,7 @@ public class AdminApiController {
 
     @PostMapping("/parsePicsRUSBT")
     private void parsePicsRUSBT() {
-        productBuilder.parsePicsRUSBT();
+        productBuilder.parseRUSBTParams();
     }
 
     @PostMapping("/downloadImage")
