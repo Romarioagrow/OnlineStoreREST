@@ -46,29 +46,24 @@ public class ProductBuilder {
     private final OrderRepo orderRepo;
 
     public void updateProductsDB(ArrayList<MultipartFile> supplierCatalogs) {
-        try
-        {
-            parseToOriginalProducts(supplierCatalogs);
 
-            matchProducts();
+        parseToOriginalProducts(supplierCatalogs);
 
-            resolveDuplicates();
+        matchProducts();
 
-            checkProductsCorrect();
+        resolveDuplicates();
 
-            mapCatalogJSON();
+        checkProductsCorrect();
 
-            checkOrdersForProductAvailable();
+        mapCatalogJSON();
 
-            log.info("Update Complete! Products available: " + productRepo.findAll().size());
-        }
-        catch (NullPointerException | IOException e) {
-            e.getStackTrace();
-        }
+        checkOrdersForProductAvailable();
+
+        log.info("Update Complete! Products available: " + productRepo.findAll().size());
     }
 
     /*Обновление данных таблицы поставщиков*/
-    private void parseToOriginalProducts(ArrayList<MultipartFile> supplierCatalogs) throws IOException {
+    private void parseToOriginalProducts(ArrayList<MultipartFile> supplierCatalogs) {
         try
         {
             for (MultipartFile excelFile : supplierCatalogs)
@@ -76,33 +71,40 @@ public class ProductBuilder {
                 System.out.println();
                 log.info("Парсинг: " + excelFile.getOriginalFilename());
 
-                int countCreate = 0, countUpdate = 0;
-                boolean supplierRBT = excelFile.getOriginalFilename().contains("СП2");
+                try (XSSFWorkbook workbook = new XSSFWorkbook(excelFile.getInputStream())) {
 
-                XSSFSheet sheet = new XSSFWorkbook(excelFile.getInputStream()).getSheetAt(0);
-                for (Row row : sheet)
-                {
-                    if (lineIsCorrect(row, supplierRBT))
+                    XSSFSheet sheet = workbook.getSheetAt(0);
+
+                    int countCreate = 0, countUpdate = 0;
+                    boolean supplierRBT = excelFile.getOriginalFilename().contains("СП2");
+
+                    for (Row row : sheet)
                     {
-                        String productID = resolveProductID(supplierRBT, row);
+                        if (lineIsCorrect(row, supplierRBT))
+                        {
+                            String productID = resolveProductID(supplierRBT, row);
 
-                        /*Обновить существущий OriginalProduct*/
-                        if (originalProductExists(productID))
-                        {
-                            updateOriginalProduct(row, productID, supplierRBT);
-                            countUpdate++;
-                        }
-                        /*Создать OriginalProduct*/
-                        else
-                        {
-                            createOriginalProduct(row, productID, supplierRBT);
-                            countCreate++;
+                            /*Обновить существущий OriginalProduct*/
+                            if (originalProductExists(productID))
+                            {
+                                updateOriginalProduct(row, productID, supplierRBT);
+                                countUpdate++;
+                            }
+                            /*Создать OriginalProduct*/
+                            else
+                            {
+                                createOriginalProduct(row, productID, supplierRBT);
+                                countCreate++;
+                            }
                         }
                     }
+                    log.info("Всего строк: " + sheet.getLastRowNum());
+                    log.info("Создано: " + countCreate);
+                    log.info("Обновлено: " + countUpdate);
                 }
-                log.info("Всего строк: " + sheet.getLastRowNum());
-                log.info("Создано: " + countCreate);
-                log.info("Обновлено: " + countUpdate);
+                catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
         catch (OLE2NotOfficeXmlFileException e) {
@@ -157,6 +159,8 @@ public class ProductBuilder {
     }
 
     private Product resolveProductsDetails(OriginalProduct originalProduct, Product product) {
+        //log.info("resolveProductsDetails: " + originalProduct.getOriginalName());
+
         boolean supplierRBT   = originalProduct.getSupplier().equals("RBT");
 
         String singleTypeName = product.getSingleTypeName();
@@ -172,8 +176,13 @@ public class ProductBuilder {
         String searchName     = resolveSearchName(modelName, singleTypeName, originalBrand).trim();
         String shortModelName = resolveShortModel(modelName, singleTypeName, originalBrand).trim();
 
+        Integer defaultPrice  = makeRoundFinalPrice(originalProduct.getOriginalPrice(), product.getDefaultCoefficient());//resolveDefaultPrice(originalProduct, product.getDefaultCoefficient());
         Integer finalPrice    = resolveFinalPrice(originalProduct, product.getDefaultCoefficient());
         Integer bonus         = resolveBonus(finalPrice);
+
+        if (originalProduct.getPriceModified() != null) {
+            product.setPriceModified(true);
+        }
 
         product.setOriginalName(originalName);
         product.setFinalPrice(finalPrice);
@@ -192,6 +201,7 @@ public class ProductBuilder {
         product.setBrand(originalBrand);
         product.setUpdateDate(LocalDate.now());
 
+        originalProduct.setDefaultPrice(defaultPrice);
         originalProduct.setFinalPrice(finalPrice);
         originalProduct.setBonus(bonus);
         originalRepo.save(originalProduct);
@@ -254,7 +264,7 @@ public class ProductBuilder {
     }
 
     /*Обновить каталог в JSON и сохранить в папку*/
-    public void mapCatalogJSON() throws IOException {
+    public void mapCatalogJSON() {
         log.info("mapCatalogJSON...");
 
         LinkedHashMap<String, List<ArrayList<String>>> fullCatalog = new LinkedHashMap<>();
@@ -309,7 +319,13 @@ public class ProductBuilder {
 
             fullCatalog.put(category, productGroups);
         }
-        new ObjectMapper().writeValue(new File("D:\\Projects\\ExpertRestRELEASE\\src\\main\\resources\\static\\js\\assets\\json\\catalog.json"), fullCatalog);
+        try
+        {
+            new ObjectMapper().writeValue(new File("D:\\Projects\\ExpertRestRELEASE\\src\\main\\resources\\static\\js\\assets\\json\\catalog.json"), fullCatalog);
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private String resolveShortAnnotation(String annotation, boolean supplierRBT) {
@@ -535,11 +551,11 @@ public class ProductBuilder {
     private Integer resolveFinalPrice(OriginalProduct originalProduct, Double coefficient) {
         int finalPrice;
 
-        if (productWithUniquePrice(originalProduct)) {
-            finalPrice = Integer.parseInt(StringUtils.deleteWhitespace(brandsRepo.findByProductID(originalProduct.getProductID()).getFinalPrice()));
+        if (originalProduct.getPriceModified() != null) {
+            finalPrice = originalProduct.getFinalPrice();
         }
-        else if (originalProduct.getPriceModified() != null) {
-            finalPrice = originalProduct.getModifiedPrice();
+        else if (productWithUniquePrice(originalProduct)) {
+            finalPrice = Integer.parseInt(StringUtils.deleteWhitespace(brandsRepo.findByProductID(originalProduct.getProductID()).getFinalPrice()));
         }
         else {
             finalPrice = makeRoundFinalPrice(originalProduct.getOriginalPrice(), coefficient);
@@ -647,43 +663,56 @@ public class ProductBuilder {
 
     private void clearProductsForUpdate() {
         log.info("Очищение Products...");
-        //productRepo.findAll().forEach(productRepo::delete);
         productRepo.deleteAll();
     }
 
-    public void updateBrandsPrice(MultipartFile file) {
-        log.info(file.getOriginalFilename());
-        try
-        {
-            CSVReader reader = new CSVReader(new BufferedReader(new InputStreamReader(file.getInputStream())), ';');
+    public void updateBrandsPrice(ArrayList<MultipartFile> brandsCatalogs) {
+        log.info(brandsCatalogs.size() + "");
+        int count = 0;
 
-            for (String[] line: reader)
+        for (MultipartFile file : brandsCatalogs) {
+            log.info(file.getOriginalFilename());
+
+            try(CSVReader reader = new CSVReader(new BufferedReader(new InputStreamReader(file.getInputStream())), ';'))
             {
-                if (!line[0].isEmpty()) {
-                    log.info(line[0]);
+                for (String[] line: reader)
+                {
+                    try
+                    {
+                        if (!line[0].isEmpty()) {
+                            System.out.println();
+                            log.info(Arrays.toString(line));
+                            log.info(line[0]);
 
-                    UniqueBrand brandProduct = brandsRepo.findByProductID(line[0]);
+                            UniqueBrand brandProduct = brandsRepo.findByProductID(line[0]);
 
-                    if (brandProduct == null) {
-                        brandProduct = new UniqueBrand();
-                        brandProduct.setProductID(line[0]);
+                            if (brandProduct == null) {
+                                brandProduct = new UniqueBrand();
+                                brandProduct.setProductID(line[0]);
+                            }
+
+                            brandProduct.setFullName(line[1]);
+                            brandProduct.setBrand(line[2]);
+                            brandProduct.setAnnotation(line[3].trim());
+                            brandProduct.setOriginalPrice(line[4].trim());
+                            brandProduct.setFinalPrice(line[5].trim());
+                            brandProduct.setPercent(line[6]);
+
+                            brandsRepo.save(brandProduct);
+                            log.info(brandProduct.getFullName());
+                            count++;
+                        }
                     }
-
-                    brandProduct.setFullName(line[1]);
-                    brandProduct.setBrand(line[2]);
-                    brandProduct.setAnnotation(line[3].trim());
-                    brandProduct.setOriginalPrice(line[4]);
-                    brandProduct.setFinalPrice(line[5]);
-                    brandProduct.setPercent(line[6]);
-
-                    brandsRepo.save(brandProduct);
-                    log.info(brandProduct.getFullName());
+                    catch (ArrayIndexOutOfBoundsException exp) {
+                        exp.printStackTrace();
+                    }
                 }
             }
+            catch (IOException exp) {
+                exp.printStackTrace();
+            }
         }
-        catch (IOException | ArrayIndexOutOfBoundsException exp) {
-            exp.getStackTrace();
-        }
+        log.info("Обработано: " + count);
     }
 
     public void parsePicsRUSBT() {
@@ -805,32 +834,31 @@ public class ProductBuilder {
         String productID = priceUpdate.get("productID");
         Integer newPrice = Integer.parseInt(priceUpdate.get("newPrice"));
 
+        OriginalProduct originalProduct = originalRepo.findByProductID(productID);
+        originalProduct.setFinalPrice(newPrice);
+        originalProduct.setPriceModified(true);
+        originalRepo.save(originalProduct);
+
         Product product = productRepo.findByProductID(productID);
-        product.setDefaultPrice(product.getFinalPrice());
         product.setFinalPrice(newPrice);
         product.setPriceModified(true);
         productRepo.save(product);
-
-        OriginalProduct originalProduct = originalRepo.findByProductID(productID);
-        originalProduct.setPriceModified(true);
-        originalProduct.setModifiedPrice(newPrice);
-        originalRepo.save(originalProduct);
 
         return product;
     }
 
     public Product restoreDefaultPrice(String productID) {
         log.info(productID);
-        Product product = productRepo.findByProductID(productID);
-        product.setFinalPrice(product.getDefaultPrice());
-        product.setDefaultPrice(null);
-        product.setPriceModified(false);
-        productRepo.save(product);
 
         OriginalProduct originalProduct = originalRepo.findByProductID(productID);
-        originalProduct.setPriceModified(false);
-        originalProduct.setModifiedPrice(null);
+        originalProduct.setPriceModified(null);
+        originalProduct.setFinalPrice(originalProduct.getDefaultPrice());
         originalRepo.save(originalProduct);
+
+        Product product = productRepo.findByProductID(productID);
+        product.setFinalPrice(originalProduct.getDefaultPrice());
+        product.setPriceModified(null);
+        productRepo.save(product);
 
         return product;
     }

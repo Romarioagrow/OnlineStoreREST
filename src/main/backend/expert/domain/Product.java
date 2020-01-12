@@ -33,7 +33,7 @@ public class Product implements Serializable {
     @Column(length = 20000)
     private String pic, linkToPic, localPic, pics, annotation, shortAnnotation, formattedAnnotation, annotationFromRUSBT;
 
-    private Boolean priceModified = false;
+    private Boolean priceModified;
 
     @JsonIgnore
     private Boolean isAvailable, uniquePrice, coefficientModified, mappedJSON = false;

@@ -93,7 +93,7 @@ public class AdminApiController {
         return user.isAdmin();
     }
 
-    @PostMapping("/updateCatalog")
+    /*@PostMapping("/updateCatalog")
     private void updateProductsCatalog() {
         try
         {
@@ -102,11 +102,22 @@ public class AdminApiController {
         catch (IOException | NullPointerException e) {
             e.printStackTrace();
         }
-    }
+    }*/
 
     @PostMapping("/uploadFileBrands")
-    private void uploadBrandsPrice(@RequestParam("fileBrands") MultipartFile file) {
-        productBuilder.updateBrandsPrice(file);
+    private void uploadBrandsPrice(
+            @RequestParam("file[0]") MultipartFile file1,
+            @RequestParam("file[1]") MultipartFile file2,
+            @RequestParam("file[2]") MultipartFile file3,
+            @RequestParam("file[3]") MultipartFile file4
+    ) {
+        ArrayList<MultipartFile> brandsCatalogs = new ArrayList<>();
+        brandsCatalogs.add(file1);
+        brandsCatalogs.add(file2);
+        brandsCatalogs.add(file3);
+        brandsCatalogs.add(file4);
+
+        productBuilder.updateBrandsPrice(brandsCatalogs);
     }
 
     @PostMapping("/parsePicsRUSBT")
