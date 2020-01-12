@@ -19,11 +19,11 @@ public class OriginalProduct {
     private String supplier;
 
     @Column(length = 20000)
-    private String originalAnnotation, originalPic, linkToPic, localPic, picsFromRUSBT, annotationFromRUSBT;
+    private String originalAnnotation, originalPic, linkToPic, localPic, pics, annotationFromRUSBT;
 
     private LocalDate updateDate;
 
-    private Boolean priceModified, coefficientModified;
+    private Boolean priceModified, coefficientModified, formattedAnno;
 
     private Integer finalPrice, defaultPrice, bonus;
 }

@@ -13,7 +13,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +26,6 @@ public class AdminApiController {
     private final ProductBuilder productBuilder;
     private final OrderService orderService;
     private final ProductService productService;
-
 
     @PostMapping("/updateDB")
     private void updateDB(
@@ -93,17 +91,6 @@ public class AdminApiController {
         return user.isAdmin();
     }
 
-    /*@PostMapping("/updateCatalog")
-    private void updateProductsCatalog() {
-        try
-        {
-            productBuilder.mapCatalogJSON();
-        }
-        catch (IOException | NullPointerException e) {
-            e.printStackTrace();
-        }
-    }*/
-
     @PostMapping("/uploadFileBrands")
     private void uploadBrandsPrice(
             @RequestParam("file[0]") MultipartFile file1,
@@ -116,7 +103,6 @@ public class AdminApiController {
         brandsCatalogs.add(file2);
         brandsCatalogs.add(file3);
         brandsCatalogs.add(file4);
-
         productBuilder.updateBrandsPrice(brandsCatalogs);
     }
 

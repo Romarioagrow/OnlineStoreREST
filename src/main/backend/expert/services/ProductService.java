@@ -94,14 +94,20 @@ public class ProductService {
 
             if (annotation.contains(diapasonKey))
             {
-                String checkingFilter = substringBetween(annotation, diapasonKey, ";");
-                Double minFilter = Double.parseDouble(substringBetween(filterName, ":", ","));
-                Double maxFilter = Double.parseDouble(substringAfter(filterName, ","));
-                double checkingValue = Double.parseDouble(substringAfter(checkingFilter, ":").replaceAll(",","."));
+                try
+                {
+                    String checkingFilter = substringBetween(annotation, diapasonKey, ";");
+                    Double minFilter = Double.parseDouble(substringBetween(filterName, ":", ","));
+                    Double maxFilter = Double.parseDouble(substringAfter(filterName, ","));
+                    double checkingValue = Double.parseDouble(substringAfter(checkingFilter, ":").replaceAll(",","."));
 
-                if (minFilter == null || maxFilter == null) return false;
+                    if (minFilter == null || maxFilter == null) return false;
 
-                return checkingValue >= minFilter && checkingValue <= maxFilter;
+                    return checkingValue >= minFilter && checkingValue <= maxFilter;
+                }
+                catch (NumberFormatException e) {
+                    e.printStackTrace();
+                }
             }
             return false;
         }).collect(Collectors.toList());
@@ -171,67 +177,70 @@ public class ProductService {
             /*Сформировать обрабатываемые фильтры*/
             products.forEach(product ->
             {
-                String supplier   = product.getSupplier();
-                String annotation = product.getAnnotation();
+                if (product.getSupplier().equals("RBT")) {
 
-                /*Разбиение аннотации экземпляра Product на фильтры*/
-                String splitter  = supplier.contains("RBT") ? "; " : ", ";
-                String[] filters = annotation.split(splitter);
+                    String supplier   = product.getSupplier();
+                    String annotation = product.getAnnotation();
 
-                /*Итерация и отсев неподходящих под фильтры-особенности*/
-                for (String filter : filters)
-                {
-                    /*Сформировать фильтры-особенности*/
-                    if (filterIsFeature(filter, supplier)) {
-                        /*Наполнение фильтров-особенностей*/
-                        filtersList.features.add(substringBefore(filter, ":").toUpperCase());
+                    /*Разбиение аннотации экземпляра Product на фильтры*/
+                    String splitter  = supplier.contains("RBT") ? "; " : ", ";
+                    String[] filters = annotation.split(splitter);
 
-                        /*Отсев дублей фильтров и синонимов фильтров*/ ///
-                        ///filtersList.features.removeIf(featureFilter -> Arrays.stream(notParams).parallel().anyMatch(filterIsDuplicate(checkDuplicate, featureFilter)));
-                        List<String> remove = new ArrayList<>();
-                        filtersList.features.forEach(featureFilter -> {
-                            for (String checkDuplicate : filtersList.features) {
-                                if (filterIsDuplicate(checkDuplicate, featureFilter)) {
-                                    remove.add(checkDuplicate);
+                    /*Итерация и отсев неподходящих под фильтры-особенности*/
+                    for (String filter : filters)
+                    {
+                        /*Сформировать фильтры-особенности*/
+                        if (filterIsFeature(filter, supplier)) {
+                            /*Наполнение фильтров-особенностей*/
+                            filtersList.features.add(substringBefore(filter, ":").toUpperCase());
+
+                            /*Отсев дублей фильтров и синонимов фильтров*/ ///
+                            ///filtersList.features.removeIf(featureFilter -> Arrays.stream(notParams).parallel().anyMatch(filterIsDuplicate(checkDuplicate, featureFilter)));
+                            List<String> remove = new ArrayList<>();
+                            filtersList.features.forEach(featureFilter -> {
+                                for (String checkDuplicate : filtersList.features) {
+                                    if (filterIsDuplicate(checkDuplicate, featureFilter)) {
+                                        remove.add(checkDuplicate);
+                                    }
                                 }
-                            }
-                        });
-                        filtersList.features.removeAll(remove);
-                    }
-                    else if (filterIsParam(filter)) {
-                        String key = substringBefore(filter, ":");
-                        String val = substringAfter(filter, ": ");
-
-                        key = capitalize(key);
-                        val = capitalize(val);
-
-                        /*Digit diapasons*/
-                        if (filterIsDiapasonParam(val)) {
-                            try {
-                                NumberFormat format = NumberFormat.getInstance(Locale.FRANCE);
-                                Number number = format.parse(val);
-                                Double parsedValue = number.doubleValue();
-
-                                if (filtersList.diapasonsFilters.get(key) != null) {
-                                    TreeSet<Double> vals = filtersList.diapasonsFilters.get(key);
-                                    vals.add(parsedValue);
-                                    filtersList.diapasonsFilters.put(key, vals);
-                                }
-                                else filtersList.diapasonsFilters.putIfAbsent(key, new TreeSet<>(Collections.singleton(parsedValue)));
-                            }
-                            catch (ParseException e) {
-                                e.getSuppressed();
-                            }
+                            });
+                            filtersList.features.removeAll(remove);
                         }
+                        else if (filterIsParam(filter)) {
+                            String key = substringBefore(filter, ":");
+                            String val = substringAfter(filter, ": ");
 
-                        /*Сформировать фильтры-параметры*/
-                        else {
-                            if (filtersList.paramFilters.get(key) != null) {
-                                TreeSet<String> vals = filtersList.paramFilters.get(key);
-                                vals.add(val);
-                                filtersList.paramFilters.put(key, vals);
+                            key = capitalize(key);
+                            val = capitalize(val);
+
+                            /*Digit diapasons*/
+                            if (filterIsDiapasonParam(val)) {
+                                try {
+                                    NumberFormat format = NumberFormat.getInstance(Locale.FRANCE);
+                                    Number number = format.parse(val);
+                                    Double parsedValue = number.doubleValue();
+
+                                    if (filtersList.diapasonsFilters.get(key) != null) {
+                                        TreeSet<Double> vals = filtersList.diapasonsFilters.get(key);
+                                        vals.add(parsedValue);
+                                        filtersList.diapasonsFilters.put(key, vals);
+                                    }
+                                    else filtersList.diapasonsFilters.putIfAbsent(key, new TreeSet<>(Collections.singleton(parsedValue)));
+                                }
+                                catch (ParseException e) {
+                                    e.getSuppressed();
+                                }
                             }
-                            else filtersList.paramFilters.putIfAbsent(key, new TreeSet<>(Collections.singleton(val)));
+
+                            /*Сформировать фильтры-параметры*/
+                            else {
+                                if (filtersList.paramFilters.get(key) != null) {
+                                    TreeSet<String> vals = filtersList.paramFilters.get(key);
+                                    vals.add(val);
+                                    filtersList.paramFilters.put(key, vals);
+                                }
+                                else filtersList.paramFilters.putIfAbsent(key, new TreeSet<>(Collections.singleton(val)));
+                            }
                         }
                     }
                 }

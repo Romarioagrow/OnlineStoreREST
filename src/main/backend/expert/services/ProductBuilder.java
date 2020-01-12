@@ -112,6 +112,61 @@ public class ProductBuilder {
         }
     }
 
+    private void createOriginalProduct(Row row, String productID, boolean supplierRBT) {
+        try
+        {
+            OriginalProduct originalProduct = new OriginalProduct();
+            originalProduct.setProductID(productID);
+
+            String originalCategory     = supplierRBT ? row.getCell(1).toString() : row.getCell(0).toString();
+            String originalGroup        = supplierRBT ? "" : row.getCell(1).toString();
+            String originalType         = supplierRBT ? row.getCell(2).toString() : row.getCell(3).toString();
+            String originalName         = supplierRBT ? row.getCell(3).getStringCellValue() : row.getCell(6).toString();
+            String originalAnnotation   = supplierRBT ? row.getCell(5).toString() : "";
+            String originalPrice        = supplierRBT ? row.getCell(7).toString().trim() : row.getCell(13).toString().trim();
+            String originalAmount       = supplierRBT ? row.getCell(6).toString() : row.getCell(7).toString().concat(row.getCell(8).toString());
+            String originalBrand        = row.getCell(4).toString();
+            String supplier             = supplierRBT ? "RBT" : "RUSBT";
+
+            if (supplier.equals("RBT")) {
+                String picLink =  StringUtils.substringBetween(row.getCell(3).toString(), "\"", "\"");
+                originalProduct.setOriginalPic(picLink);
+            }
+            else if (!row.getCell(15).toString().isEmpty()) {
+                String linkToProductPage = row.getCell(15).getHyperlink().getAddress();
+                originalProduct.setLinkToPic(linkToProductPage);
+            }
+
+            originalProduct.setOriginalCategory(originalCategory);
+            originalProduct.setOriginalGroup(originalGroup);
+            originalProduct.setOriginalType(originalType);
+            originalProduct.setOriginalName(originalName);
+            originalProduct.setOriginalAnnotation(originalAnnotation);
+            originalProduct.setOriginalPrice(originalPrice);
+            originalProduct.setOriginalAmount(originalAmount);
+            originalProduct.setOriginalBrand(originalBrand);
+            originalProduct.setSupplier(supplier);
+
+            originalProduct.setUpdateDate(LocalDate.now());
+            originalRepo.save(originalProduct);
+        }
+        catch (NullPointerException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateOriginalProduct(Row row, String productID, boolean supplierRBT) {
+        OriginalProduct originalProduct = originalRepo.findByProductID(productID);
+
+        String newOriginalPrice  = supplierRBT ? row.getCell(7).toString() : row.getCell(13).toString();
+        String newOriginalAmount = supplierRBT ? row.getCell(6).toString() : row.getCell(7).toString().concat(row.getCell(8).toString());
+
+        originalProduct.setOriginalPrice(newOriginalPrice);
+        originalProduct.setOriginalAmount(newOriginalAmount);
+        originalProduct.setUpdateDate(LocalDate.now());
+        originalRepo.save(originalProduct);
+    }
+
     /*Создать оснвоной Product для вывода и работы на клиенте*/
     private void matchProducts() {
         clearProductsForUpdate();
@@ -158,9 +213,47 @@ public class ProductBuilder {
         return matchFromOriginalProduct(originalProduct, productID);
     }
 
+    /*Обратока вычисляемых значений для товара*/
+    private Product matchProductJSON(Map.Entry<String, String> aliasEntry, String productID) {
+        Product product = new Product(productID);
+        try
+        {
+            String[] productDetails = aliasEntry.getValue().split(",");
+
+            Double defaultCoefficient   = Double.valueOf(productDetails[1]); /// resolveCoefficient() если product с уникальной ценой
+            String productGroup         = productDetails[0];
+            String singleTypeName       = productDetails[2];
+            String productCategory      = productDetails[3];
+
+            product.setProductCategory(productCategory);
+            product.setProductGroup(productGroup);
+            product.setDefaultCoefficient(defaultCoefficient);
+            product.setSingleTypeName(singleTypeName);
+            product.setMappedJSON(true);
+        }
+        catch (NullPointerException | ArrayIndexOutOfBoundsException | NumberFormatException e) {
+            e.printStackTrace();
+        }
+        return product;
+    }
+
+    private Product matchFromOriginalProduct(OriginalProduct originalProduct, String productID) {
+        Product product = new Product(productID);
+
+        Double defaultCoefficient   = 1.2;
+        String defaultCategory      = resolveDefaultCategory(originalProduct.getOriginalCategory());
+        String defaultProductGroup  = resolveDefaultGroup(originalProduct.getOriginalType());
+        String singleTypeName       = StringUtils.substringBefore(originalProduct.getOriginalName().toLowerCase(), originalProduct.getOriginalBrand().toLowerCase());
+
+        product.setProductCategory(defaultCategory);
+        product.setProductGroup(defaultProductGroup);
+        product.setSingleTypeName(singleTypeName);
+        product.setDefaultCoefficient(defaultCoefficient);
+        return product;
+    }
+
     private Product resolveProductsDetails(OriginalProduct originalProduct, Product product) {
         //log.info("resolveProductsDetails: " + originalProduct.getOriginalName());
-
         boolean supplierRBT   = originalProduct.getSupplier().equals("RBT");
 
         String singleTypeName = product.getSingleTypeName();
@@ -169,12 +262,13 @@ public class ProductBuilder {
 
         String modelName      = resolveModelName(originalProduct).toUpperCase().trim();
         String annotation     = resolveAnnotation(originalProduct, supplierRBT);
-        String shortAnnotation = resolveShortAnnotation(annotation, supplierRBT);
-        String formattedAnnotation = shortAnnotation.replaceAll(";", "<br>");
         String fullName       = resolveFullName(originalName, modelName, singleTypeName, originalBrand).trim();
         String groupBrandName = resolveBrandName(singleTypeName, originalBrand).trim();
         String searchName     = resolveSearchName(modelName, singleTypeName, originalBrand).trim();
         String shortModelName = resolveShortModel(modelName, singleTypeName, originalBrand).trim();
+        String pic            = resolveProductPic(originalProduct);
+        String shortAnnotation      = resolveShortAnnotation(annotation, supplierRBT);
+        String formattedAnnotation  = shortAnnotation.replaceAll(";", "<br>");
 
         Integer defaultPrice  = makeRoundFinalPrice(originalProduct.getOriginalPrice(), product.getDefaultCoefficient());//resolveDefaultPrice(originalProduct, product.getDefaultCoefficient());
         Integer finalPrice    = resolveFinalPrice(originalProduct, product.getDefaultCoefficient());
@@ -197,7 +291,7 @@ public class ProductBuilder {
         product.setFormattedAnnotation(formattedAnnotation);
 
         product.setSupplier(originalProduct.getSupplier());
-        product.setPic(originalProduct.getOriginalPic());
+        product.setPic(pic);
         product.setBrand(originalBrand);
         product.setUpdateDate(LocalDate.now());
 
@@ -207,6 +301,45 @@ public class ProductBuilder {
         originalRepo.save(originalProduct);
 
         return product;
+    }
+
+    /*Обработка товаров-дубликатов*/
+    private void resolveDuplicates() {
+        log.info("Обработка дубликатов...");
+
+        int count = 0;
+        int before = productRepo.findAll().size();
+
+        List<Product> products = productRepo.findBySupplier("RBT");
+
+        for (Product product : products) {
+
+            String shortModel = product.getShortModelName();
+            String brand =  product.getBrand();
+
+            if (!shortModel.isEmpty()) {
+
+                List<Product> duplicates = productRepo.findBySupplierAndBrandAndShortModelNameIgnoreCase("RUSBT", brand, shortModel);
+
+                if (!duplicates.isEmpty())
+                {
+                    count++;
+                    duplicates.sort(Comparator.comparing(Product::getFinalPrice));
+
+                    if (product.getFinalPrice() >= duplicates.get(0).getFinalPrice()) {
+                        productRepo.deleteAll(duplicates);
+                    }
+                    else
+                    {
+                        productRepo.delete(product);
+                        duplicates.stream().skip(1).forEach(productRepo::delete);
+                    }
+                }
+            }
+        }
+        log.info("Товаров с дубликатами: " + count);
+        log.info("BEFORE: " + before );
+        log.info("AFTER: " + productRepo.findAll().size());
     }
 
     /*Пост-обработка разметки*/
@@ -328,6 +461,186 @@ public class ProductBuilder {
         }
     }
 
+    public void parsePicsRUSBT() {
+        AtomicInteger count404 = new AtomicInteger();
+        AtomicInteger countPic = new AtomicInteger();
+        AtomicInteger countAnno = new AtomicInteger();
+        AtomicInteger connectionError = new AtomicInteger();
+
+        List<OriginalProduct> originalProducts = originalRepo.findByOriginalPicIsNullAndSupplierAndLinkToPicIsNotNull("RUSBT");
+
+        System.out.println();
+        log.info("Парсинг сайта картинок RUSBT");
+        log.info("Всего товаров без картинок для парсинга: " + originalProducts.size());
+
+        originalProducts.forEach(originalProduct ->
+        {
+            Product product = productRepo.findByProductID("03_00008707");
+
+            String link = originalProduct.getLinkToPic();
+            log.info(link);
+
+            try
+            {
+                Document page = Jsoup.connect(link).get();
+
+                if (!page.hasText()) {
+                    throw new ConnectException();
+                }
+
+                System.out.println();
+                log.info("Парсинг: " + originalProduct.getOriginalName());
+
+                Thread parsePics = new Thread(() ->
+                {
+                    Elements pics = page.getElementsByClass("cnt_item");
+
+                    if (pics.isEmpty()) {
+                        log.info("Нет изображения товара на сайте!");
+                    }
+                    else
+                    {
+                        int picsFound = pics.size();
+                        log.info("Изображений товара: " + picsFound);
+
+                        String firstPic = "http://rusbt.ru".concat(StringUtils.substringBetween(pics.get(0).toString(), "url('", "');"));
+                        originalProduct.setOriginalPic(firstPic);
+                        product.setPic(firstPic);
+
+                        if (picsFound > 1) {
+                            String fewPics = originalProduct.getPics() != null ? originalProduct.getPics() : "";
+
+                            for (Element pic : pics) {
+                                String anotherPic = "http://rusbt.ru".concat(StringUtils.substringBetween(pic.toString(), "url('", "');"));
+                                fewPics = fewPics.concat(anotherPic).concat(";");
+                            }
+
+                            log.info("fewPics: " + fewPics);
+                            originalProduct.setPics(fewPics);
+                            product.setPics(fewPics);
+                        }
+                        originalRepo.save(originalProduct);
+                        productRepo.save(product);
+                        countPic.getAndIncrement();
+                    }
+                });
+
+                Thread parsInfo = new Thread(() ->
+                {
+
+                    Element productParams = page.getElementById("tabs-2");
+                    Elements productInfo = page.getElementsByClass("bx_item_description");
+                    Elements infoKeys = productParams.getElementsByClass("left_prop");
+                    Elements infoVals = productParams.getElementsByClass("left_value");
+
+                    String annotation = "";
+                    String aboutProduct = productInfo.text();
+
+                    for (int i = 0; i < infoKeys.size(); i++) {
+                        String key = infoKeys.get(i).getElementsByTag("span").text();
+                        String val = infoVals.get(i).ownText();
+
+                        String anno = key.concat(": ").concat(val).concat(";");
+                        annotation = annotation.concat(anno);
+
+                        log.info(key + ": " + val);
+                    }
+
+                    originalProduct.setOriginalAnnotation(annotation);
+                    originalProduct.setAnnotationFromRUSBT(aboutProduct);
+                    originalProduct.setFormattedAnno(true);
+
+                    originalRepo.save(originalProduct);
+                    productRepo.save(product);
+
+                    countAnno.getAndIncrement();
+                    log.info("ANNOTATION: " + annotation);
+                    log.info("INFO: " + productInfo.text());
+                });
+
+                parsePics.start();
+                parsInfo.start();
+
+            }
+            catch (HttpStatusException exp) {
+                log.info("404 Page is empty");
+                count404.getAndIncrement();
+            }
+            catch (ConnectException exp) {
+                connectionError.getAndIncrement();
+                log.info("Connection timed out");
+                exp.printStackTrace();
+            }
+            catch (MalformedURLException exp) {
+                log.info(exp.getClass().getName());
+            }
+            catch (IOException | NullPointerException exp) {
+                exp.printStackTrace();
+            }
+        });
+
+        System.out.println();
+        log.info("Всего товаров: " + originalProducts.size());
+        log.info("Товаров с изображениями: " + countPic);
+        log.info("Товаров с аннотацией: "+ countAnno);
+        log.info("404 на сайте: " + count404);
+        log.info("ConnectException: " + connectionError);
+    }
+
+    /*Загрузить прайсы со специальными товарами от поставщика*/
+    public void updateBrandsPrice(ArrayList<MultipartFile> brandsCatalogs) {
+        log.info(brandsCatalogs.size() + "");
+        int count = 0;
+
+        for (MultipartFile file : brandsCatalogs) {
+            log.info(file.getOriginalFilename());
+
+            try(CSVReader reader = new CSVReader(new BufferedReader(new InputStreamReader(file.getInputStream())), ';'))
+            {
+                for (String[] line: reader)
+                {
+                    try
+                    {
+                        if (!line[0].isEmpty()) {
+                            System.out.println();
+                            log.info(Arrays.toString(line));
+                            log.info(line[0]);
+
+                            UniqueBrand brandProduct = brandsRepo.findByProductID(line[0]);
+
+                            if (brandProduct == null) {
+                                brandProduct = new UniqueBrand();
+                                brandProduct.setProductID(line[0]);
+                            }
+
+                            brandProduct.setFullName(line[1]);
+                            brandProduct.setBrand(line[2]);
+                            brandProduct.setAnnotation(line[3].trim());
+                            brandProduct.setOriginalPrice(line[4].trim());
+                            brandProduct.setFinalPrice(line[5].trim());
+                            brandProduct.setPercent(line[6]);
+
+                            brandsRepo.save(brandProduct);
+                            log.info(brandProduct.getFullName());
+                            count++;
+                        }
+                    }
+                    catch (ArrayIndexOutOfBoundsException exp) {
+                        exp.printStackTrace();
+                    }
+                }
+            }
+            catch (IOException exp) {
+                exp.printStackTrace();
+            }
+        }
+        log.info("Обработано: " + count);
+    }
+
+    private String resolveProductPic(OriginalProduct originalProduct) {
+        return originalProduct.getOriginalPic() != null ? originalProduct.getOriginalPic() : "https://legprom71.ru/Content/images/no-photo.png";
+    }
+
     private String resolveShortAnnotation(String annotation, boolean supplierRBT) {
         if (!annotation.isEmpty())
         {
@@ -346,64 +659,6 @@ public class ProductBuilder {
             return shortAnnotation;
         }
         return "Original Annotation is empty!";
-    }
-
-    private void createOriginalProduct(Row row, String productID, boolean supplierRBT) {
-        try
-        {
-            OriginalProduct originalProduct = new OriginalProduct();
-            originalProduct.setProductID(productID);
-
-            String originalCategory     = supplierRBT ? row.getCell(1).toString() : row.getCell(0).toString();
-            String originalGroup        = supplierRBT ? "" : row.getCell(1).toString();
-            String originalType         = supplierRBT ? row.getCell(2).toString() : row.getCell(3).toString();
-            String originalName         = supplierRBT ? row.getCell(3).getStringCellValue() : row.getCell(6).toString();
-            String originalAnnotation   = supplierRBT ? row.getCell(5).toString() : "";
-            String originalPrice        = supplierRBT ? row.getCell(7).toString().trim() : row.getCell(13).toString().trim();
-            String originalAmount       = supplierRBT ? row.getCell(6).toString() : row.getCell(7).toString().concat(row.getCell(8).toString());
-            String originalBrand        = row.getCell(4).toString();
-            String supplier             = supplierRBT ? "RBT" : "RUSBT";
-            String originalPic = getOriginalPicLink(supplier, row);
-
-            originalProduct.setOriginalCategory(originalCategory);
-            originalProduct.setOriginalGroup(originalGroup);
-            originalProduct.setOriginalType(originalType);
-            originalProduct.setOriginalName(originalName);
-            originalProduct.setOriginalAnnotation(originalAnnotation);
-            originalProduct.setOriginalPrice(originalPrice);
-            originalProduct.setOriginalAmount(originalAmount);
-            originalProduct.setOriginalBrand(originalBrand);
-            originalProduct.setSupplier(supplier);
-            originalProduct.setOriginalPic(originalPic);
-            originalProduct.setUpdateDate(LocalDate.now());
-            originalRepo.save(originalProduct);
-        }
-        catch (NullPointerException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private String getOriginalPicLink(String supplier, Row row) {
-        String picLink = null;
-        if (supplier.equals("RBT")) {
-            picLink =  StringUtils.substringBetween(row.getCell(3).toString(), "\"", "\""); /*при попытке row.getCell(3).getHyperlink().getAddress() вылетает NullPointer*/
-        }
-        else if (!row.getCell(15).toString().isEmpty()) {
-            picLink = row.getCell(15).getHyperlink().getAddress();
-        }
-        return picLink != null ? picLink : "https://legprom71.ru/Content/images/no-photo.png";
-    }
-
-    private void updateOriginalProduct(Row row, String productID, boolean supplierRBT) {
-        OriginalProduct originalProduct = originalRepo.findByProductID(productID);
-
-        String newOriginalPrice  = supplierRBT ? row.getCell(7).toString() : row.getCell(13).toString();
-        String newOriginalAmount = supplierRBT ? row.getCell(6).toString() : row.getCell(7).toString().concat(row.getCell(8).toString());
-
-        originalProduct.setOriginalPrice(newOriginalPrice);
-        originalProduct.setOriginalAmount(newOriginalAmount);
-        originalProduct.setUpdateDate(LocalDate.now());
-        originalRepo.save(originalProduct);
     }
 
     private boolean originalProductExists(String productID) {
@@ -425,44 +680,6 @@ public class ProductBuilder {
             return (!firstCell.isEmpty() && !firstCell.startsWith("8(351)") && !firstCell.startsWith(".") && !firstCell.startsWith("г. Челябинск") && !firstCell.startsWith("Код товара"));
         }
         return (!firstCell.isEmpty() && !StringUtils.containsIgnoreCase(firstCell, "Уценка") && !firstCell.contains("Группа 1"));
-    }
-
-    /*Обратока вычисляемых значений для товара*/
-    private Product matchProductJSON(Map.Entry<String, String> aliasEntry, String productID) {
-        Product product = new Product(productID);
-        try
-        {
-            String[] productDetails = aliasEntry.getValue().split(",");
-
-            Double defaultCoefficient   = Double.valueOf(productDetails[1]); /// resolveCoefficient() если product с уникальной ценой
-            String productGroup         = productDetails[0];
-            String singleTypeName       = productDetails[2];
-            String productCategory      = productDetails[3];
-
-            product.setProductCategory(productCategory);
-            product.setProductGroup(productGroup);
-            product.setDefaultCoefficient(defaultCoefficient);
-            product.setSingleTypeName(singleTypeName);
-            product.setMappedJSON(true);
-        }
-        catch (NullPointerException | ArrayIndexOutOfBoundsException | NumberFormatException e) {
-            e.printStackTrace();
-        }
-        return product;
-    }
-    private Product matchFromOriginalProduct(OriginalProduct originalProduct, String productID) {
-        Product product = new Product(productID);
-
-        Double defaultCoefficient   = 1.2;
-        String defaultCategory      = resolveDefaultCategory(originalProduct.getOriginalCategory());
-        String defaultProductGroup  = resolveDefaultGroup(originalProduct.getOriginalType());
-        String singleTypeName       = StringUtils.substringBefore(originalProduct.getOriginalName().toLowerCase(), originalProduct.getOriginalBrand().toLowerCase());
-
-        product.setProductCategory(defaultCategory);
-        product.setProductGroup(defaultProductGroup);
-        product.setSingleTypeName(singleTypeName);
-        product.setDefaultCoefficient(defaultCoefficient);
-        return product;
     }
 
     private String resolveDefaultGroup(String originalType) {
@@ -623,181 +840,12 @@ public class ProductBuilder {
         else return "";
     }
 
-    private void resolveDuplicates() {
-        log.info("Обработка дубликатов...");
-
-        int count = 0;
-        int before = productRepo.findAll().size();
-
-        List<Product> products = productRepo.findBySupplier("RBT");
-
-        for (Product product : products) {
-
-            String shortModel = product.getShortModelName();
-            String brand =  product.getBrand();
-
-            if (!shortModel.isEmpty()) {
-
-                List<Product> duplicates = productRepo.findBySupplierAndBrandAndShortModelNameIgnoreCase("RUSBT", brand, shortModel);
-
-                if (!duplicates.isEmpty())
-                {
-                    count++;
-                    duplicates.sort(Comparator.comparing(Product::getFinalPrice));
-
-                    if (product.getFinalPrice() >= duplicates.get(0).getFinalPrice()) {
-                        productRepo.deleteAll(duplicates);
-                    }
-                    else
-                    {
-                        productRepo.delete(product);
-                        duplicates.stream().skip(1).forEach(productRepo::delete);
-                    }
-                }
-            }
-        }
-        log.info("Товаров с дубликатами: " + count);
-        log.info("BEFORE: " + before );
-        log.info("AFTER: " + productRepo.findAll().size());
-    }
-
     private void clearProductsForUpdate() {
         log.info("Очищение Products...");
         productRepo.deleteAll();
     }
 
-    public void updateBrandsPrice(ArrayList<MultipartFile> brandsCatalogs) {
-        log.info(brandsCatalogs.size() + "");
-        int count = 0;
 
-        for (MultipartFile file : brandsCatalogs) {
-            log.info(file.getOriginalFilename());
-
-            try(CSVReader reader = new CSVReader(new BufferedReader(new InputStreamReader(file.getInputStream())), ';'))
-            {
-                for (String[] line: reader)
-                {
-                    try
-                    {
-                        if (!line[0].isEmpty()) {
-                            System.out.println();
-                            log.info(Arrays.toString(line));
-                            log.info(line[0]);
-
-                            UniqueBrand brandProduct = brandsRepo.findByProductID(line[0]);
-
-                            if (brandProduct == null) {
-                                brandProduct = new UniqueBrand();
-                                brandProduct.setProductID(line[0]);
-                            }
-
-                            brandProduct.setFullName(line[1]);
-                            brandProduct.setBrand(line[2]);
-                            brandProduct.setAnnotation(line[3].trim());
-                            brandProduct.setOriginalPrice(line[4].trim());
-                            brandProduct.setFinalPrice(line[5].trim());
-                            brandProduct.setPercent(line[6]);
-
-                            brandsRepo.save(brandProduct);
-                            log.info(brandProduct.getFullName());
-                            count++;
-                        }
-                    }
-                    catch (ArrayIndexOutOfBoundsException exp) {
-                        exp.printStackTrace();
-                    }
-                }
-            }
-            catch (IOException exp) {
-                exp.printStackTrace();
-            }
-        }
-        log.info("Обработано: " + count);
-    }
-
-    public void parsePicsRUSBT() {
-        /// findInBigBase();
-
-        AtomicInteger count404 = new AtomicInteger(), countPic = new AtomicInteger(), countAnno = new AtomicInteger(), countInfo = new AtomicInteger();
-        List<OriginalProduct> originalProducts = originalRepo.findByLinkToPicContains("rusbt"); /// not contains "no image"
-
-        System.out.println();
-        log.info("Парсинг сайта картинок RUSBT");
-        log.info("Всего товаров без картинок для парсинга: " + originalProducts.size());
-
-        originalProducts.forEach(originalProduct ->
-        {
-            String link = originalProduct.getLinkToPic();
-            try
-            {
-                String pic;
-                Document page = Jsoup.connect(link).get();
-                Elements pics = page.select("img");
-                for (Element picElement : pics)
-                {
-                    String picSrc = picElement.attr("src");
-                    if (picSrc.startsWith("/upload"))
-                    {
-                        pic = "http://rusbt.ru".concat(picSrc);
-                        if (originalProduct.getOriginalPic() == null) originalProduct.setOriginalPic(pic);
-                        else if (originalProduct.getPicsFromRUSBT() == null) originalProduct.setPicsFromRUSBT(pic);
-                        originalRepo.save(originalProduct);
-
-                        log.info("Изображения для: " + originalProduct.getOriginalName() + ": " + pic);
-                        countPic.getAndIncrement();
-                    }
-                    else log.info("Нет изображения товара на сайте!");
-                }
-
-                Elements props = page.getElementsByClass("one_prop");
-                for (Element element : props) {
-                    String key = StringUtils.substringBetween(element.html(), "<span>", "</span>");
-                    String val = StringUtils.substringBetween(element.html(), "<div class=\"left_value\">", "</div>");
-                    String param = key.concat(":").concat(val).concat(";");
-
-                    if (originalProduct.getAnnotationFromRUSBT() == null) {
-                        originalProduct.setAnnotationFromRUSBT(param);
-                    }
-                    else originalProduct.setAnnotationFromRUSBT(originalProduct.getAnnotationFromRUSBT().concat(param));
-                }
-                originalRepo.save(originalProduct);
-
-                Product product = productRepo.findByProductID(originalProduct.getProductID());
-                product.setPic(originalProduct.getOriginalPic());
-                product.setPics(originalProduct.getPicsFromRUSBT());
-                product.setAnnotationFromRUSBT(originalProduct.getAnnotationFromRUSBT());
-                productRepo.save(product);
-
-                countInfo.getAndIncrement();
-                log.info(countInfo + " из " + originalProducts.size());
-            }
-            catch (HttpStatusException exp) {
-                log.info("404 Page is empty");
-                count404.getAndIncrement();
-            }
-            catch (ConnectException exp) {
-                log.info("Connection timed out");
-                exp.printStackTrace();
-            }
-            catch (MalformedURLException exp) {
-                log.info(exp.getClass().getName());
-            }
-            catch (IOException | NullPointerException exp) {
-                exp.printStackTrace();
-            }
-        });
-        /// downloadPics();
-
-        System.out.println();
-        log.info("Всего товаров: "      + originalProducts.size());
-        log.info("Успешно скачано: "    + countPic);
-        log.info("404 на сайте: "       + count404);
-    }
-
-    public void test() {
-        log.info("test");
-        resolveDuplicates();
-    }
 
     public boolean downloadImage(Map<String, String> data) {
 
@@ -870,5 +918,9 @@ public class ProductBuilder {
             originalRepo.save(originalProduct);
         });
         log.info("Original DB reset");
+    }
+
+    public void test() {
+        log.info("test");
     }
 }
