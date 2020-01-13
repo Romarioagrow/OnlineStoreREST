@@ -207,7 +207,8 @@ public class ProductService {
     }
 
     private Map<String, TreeSet<Double>> collectDiapasonFilters(Map<String, TreeSet<Double>> diapasons, Map<String, TreeSet<String>> filtersMap) {
-        /*Если последнее значение меньше 10, то в параметры*/
+
+        /*!!! Если последнее значение меньше 10, то в параметры*/
 
         filtersMap.forEach((key, setVals) ->
         {
@@ -220,6 +221,19 @@ public class ProductService {
                         .map(stringDiapasonVal -> stringDiapasonVal.replaceAll(",","."))
                         .mapToDouble(Double::parseDouble)
                         .forEach(doubleVals::add);
+
+                Double firstVal = Math.floor(doubleVals.first());
+                Double lastVal = doubleVals.last();
+
+                doubleVals.clear();
+                doubleVals.add(firstVal);
+                doubleVals.add(lastVal);
+
+                /*log.info(doubleVals.size() + " size ");
+
+                if (doubleVals.size() == 1) {
+                    doubleVals.add(firstVal);
+                }*/
 
                 diapasons.put(key, doubleVals);
             }

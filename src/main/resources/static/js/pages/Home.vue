@@ -99,7 +99,7 @@
                         <v-tab v-for="(product, index) of recentProducts" :key="product.productID">
 
                             <v-card height="280" @click="goToProduct(product.productID)">
-                                <v-img class="white--text" style="margin-top:3%" contain height="120px" :src="product.pic"></v-img>
+                                <v-img class="white--text" style="margin-top:3%" contain eager height="120px" :src="product.pic"></v-img>
 
                                 <v-spacer></v-spacer>
 

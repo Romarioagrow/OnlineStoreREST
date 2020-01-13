@@ -79,12 +79,12 @@
                         <!--Если одно фото-->
                         <div v-if="!product.pics">
                             <a @mouseover="this.style.cursor='pointer'">
-                                <v-img class="white--text" contain max-height="300" :src="product.pic" alt="Bad Link" @click.stop="picDialog = true"></v-img>
+                                <v-img class="white--text" contain eager max-height="300" :src="product.pic" alt="Bad Link" @click.stop="picDialog = true"></v-img>
                             </a>
 
                             <v-dialog v-model="picDialog" max-width="80%">
                                 <v-card>
-                                    <v-img class="white--text" height="1000" contain :src="product.pic" alt="Bad Link" @click.stop="picDialog = true"></v-img>
+                                    <v-img class="white--text" height="1000" contain eager :src="product.pic" alt="Bad Link" @click.stop="picDialog = true"></v-img>
                                 </v-card>
                             </v-dialog>
                         </div>

@@ -55,8 +55,8 @@
             <router-link to="/order" class="ml-5">
                 <v-btn tile outlined>
                     Корзина
-                    <v-badge color="#000000" right>
-                        <template v-slot:badge v-if="totalOrderProductsAmount > 0">
+                    <v-badge color="#000000" right v-if="totalOrderProductsAmount > 0">
+                        <template v-slot:badge>
                             <span>{{totalOrderProductsAmount}}</span>
                         </template>
                         <v-icon>mdi-cart</v-icon>

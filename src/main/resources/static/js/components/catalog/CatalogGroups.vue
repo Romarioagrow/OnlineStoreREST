@@ -8,7 +8,7 @@
                     :elevation="hover ? 12 : 2"
             >
                 <v-card-title class="mb-3">
-                    <v-img class="white--text" :src="group[1]" contain height="125" ></v-img>
+                    <v-img class="white--text" :src="group[1]" contain eager height="125" ></v-img>
                 </v-card-title>
                 <v-card-text>
                     <p class="subtitle-1 font-weight-bolder text-center">{{group[0]}}</p>

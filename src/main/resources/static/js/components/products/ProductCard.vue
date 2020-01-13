@@ -1,10 +1,11 @@
 <template>
     <v-item v-slot:default="{ active, toggle }">
-        <v-card outlined class="mx-2 mt-3 d-flex flex-column" width="300">
+        <v-card outlined tile class="mx-2 mt-3 d-flex flex-column" width="300">
 
+            <!--Главное фото + открыть фото в диалоге-->
             <div class="p-3">
                 <a>
-                    <v-img class="white--text" contain height="150px" :src="product.pic"  alt="Bad Link" @click.stop="picDialog = true"></v-img>
+                    <v-img class="white--text" eager contain height="150px" :src="product.pic"  alt="Bad Link" @click.stop="picDialog = true"></v-img>
 
                     <!--AdminMode-->
                     <div v-if="isAdminMode">
@@ -24,8 +25,9 @@
                 </v-dialog>
             </div>
 
+
             <b-card-sub-title class="ml-5 mt-1">
-                {{product.singleTypeName}}
+                {{ toUpperCase(product.singleTypeName) }}
             </b-card-sub-title>
 
             <v-card-text>
@@ -149,6 +151,9 @@
                     this.product = response.data
                     this.price = response.data.finalPrice
                 })
+            },
+            toUpperCase(param) {
+                return param.charAt(0).toUpperCase() + param.substr(1)
             }
         },
         computed: {
