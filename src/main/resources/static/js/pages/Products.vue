@@ -56,7 +56,11 @@
                     ></v-progress-circular>
                 </div>
 
-                <v-expansion-panels multiple focusable  v-else>
+                <v-expansion-panels v-else
+                                    multiple
+                                    focusable
+
+                >
                     <!--Фильтры-цены input-->
                     <v-expansion-panel>
                         <v-expansion-panel-header ripple>Цены</v-expansion-panel-header>
@@ -100,7 +104,7 @@
                             <div v-for="(param, i) in val" :key="i" :brand="param">
                                 <v-row>
                                     <v-col class="p-0 m-0">
-                                        <v-checkbox :disabled="checkFilterInCheckList(key + ': ' + param)" color="#e52d00" class="mt-2" @change="filterProducts('param;' + key + ': ' + param)" v-model="selectedParams" :label="param" :value="key +': '+param" height="2"></v-checkbox>
+                                        <v-checkbox :disabled="checkFilterInCheckList(key + ': ' + param)" color="#e52d00" class="mt-2" @change="filterProducts('param;' + key + ': ' + param)" v-model="selectedParams" :label="param" :value="key +': '+ param" height="2"></v-checkbox>
                                     </v-col>
                                 </v-row>
                             </div>
@@ -160,7 +164,9 @@
     </b-container>
 </template>
 
+
 <script>
+    /*!!! Если modelName isEmpty, to тогда выводить singleType + originalName !!!*/
     import axios from 'axios'
     import ProductCard from "components/products/ProductCard.vue";
     export default {
@@ -214,8 +220,10 @@
             linkGroup = linkGroup.charAt(0).toUpperCase() + linkGroup.substr(1)
             this.linkProductGroup = linkGroup
 
-            /*Load Filters*/
+            /*ЗАГРУЗИТЬ СПИСОК ФИЛЬТРОВ*/
             axios.get(this.filtersRequest).then(response => {
+
+                console.log(response.data)
 
                 this.filtersChecklist = response.data.checklist
                 console.log(this.filtersChecklist)
@@ -229,13 +237,13 @@
                 this.filtersBrands = response.data.brands
                 this.filtersFeats  = response.data.features
 
-                let diapasons = response.data.diapasonsFilters
+                let diapasons = response.data.diapasons
                 for (let [key, value] of Object.entries(diapasons)) {
-                    this.filtersDiapasons.set(key, value.slice(","))
-                    this.diapasonValues.set(key, value.slice(","))
+                    this.filtersDiapasons.set(key, value.slice(", "))
+                    this.diapasonValues.set(key, value.slice(", "))
                 }
 
-                let params = response.data.paramFilters
+                let params = response.data.params
                 for (const [key, value] of Object.entries(params)) this.filtersParams.set(key, value)
             });
 
@@ -249,6 +257,8 @@
             })
         },
         mounted() {
+
+            /*ПОДРУЗИТЬ ТОВАРЫ ПРИ ПРОМОТКИ ДО НИЗА ЭКРАНА*/
             window.onscroll = () => {
                 const el = document.documentElement
                 const isBottomOfScreen = el.scrollTop + window.innerHeight === el.offsetHeight
@@ -316,6 +326,8 @@
                 axios.get(pageRequest).then(response =>
                     this.products = response.data.content)
             },
+
+            /*ФИЛЬТРАЦИЯ ТОВАРОВ*/
             filterProducts(param) {
 
                 this.filtersScrollPage = 0

@@ -28,15 +28,15 @@ public class Product implements Serializable {
     private Double defaultCoefficient, customCoefficient;
 
     @Column(length = 1000)
-    private String modelName, fullName, singleTypeName, searchName, groupBrandName, shortModelName, originalName;
+    private String fullName, modelName, singleTypeName, searchName, groupBrandName, shortModelName, originalName;
 
     @Column(length = 20000)
-    private String pic, linkToPic, localPic, pics, annotation, shortAnnotation, formattedAnnotation, annotationFromRUSBT;
+    private String pic, linkToPic, localPic, pics, annotation, shortAnnotation, infoFromRUSBT;
 
     private Boolean priceModified;
 
     @JsonIgnore
-    private Boolean isAvailable, uniquePrice, coefficientModified, hasFormattedAnno, mappedJSON = false;
+    private Boolean uniquePrice, coefficientModified, annotationParsed, mappedByJson, modelNameParsed;
 
     public Product(String productID) {
         this.productID = productID;

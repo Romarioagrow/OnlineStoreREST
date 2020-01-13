@@ -1,5 +1,6 @@
 package expert.services;
 
+import com.google.common.collect.Iterables;
 import expert.domain.Product;
 import expert.dto.FiltersList;
 import expert.dto.OrderedProduct;
@@ -15,8 +16,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.text.NumberFormat;
-import java.text.ParseException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -160,142 +159,197 @@ public class ProductService {
         /*Наполнение списка товаров нужной группы*/
         List<Product> products = productRepo.findProductsByProductGroupIgnoreCase(group);
 
-        try
+        /*Checklist для active/disabled фильтров текущей модели на клиенте*/
+        filtersList.checklist = createDefaultFilterChecklist(group);
+
+        Map<String, TreeSet<String>> filtersMap = new TreeMap<>();
+
+        /*Сформировать обрабатываемые фильтры*/
+        products.forEach(product ->
         {
-            filtersList.checklist = createDefaultFilterChecklist(group);
+            if (product.getSupplier().equals("RBT") || product.getAnnotationParsed() != null) {
+                String annotation = product.getAnnotation();
 
-            /*Сформировать фильтры-бренды группы*/
-            products.forEach(product -> filtersList.brands.add(StringUtils.capitalize(product.getBrand().toLowerCase())));
+                /*Разбиение аннотации экземпляра Product на фильтры*/
+                String[] filters = annotation.split(";");
 
-            /*Сформировать фильтры-цены*/
-            List<Integer> allPrices = new LinkedList<>();
-            products.forEach(item -> allPrices.add(item.getFinalPrice()));
-            allPrices.sort(Comparator.comparingInt(Integer::intValue));
-            filtersList.prices.add(allPrices.get(0));
-            filtersList.prices.add(allPrices.get(allPrices.size()-1));
+                /*Итерация и отсев неподходящих под фильтры-особенности*/
+                for (String filter : filters)
+                {
+                    String annoKey = substringBefore(filter, ":").trim();
+                    String annoVal = substringAfter(filter, ":").trim();
 
-            /*Сформировать обрабатываемые фильтры*/
-            products.forEach(product ->
-            {
-                if (product.getSupplier().equals("RBT")) {
-
-                    String supplier   = product.getSupplier();
-                    String annotation = product.getAnnotation();
-
-                    /*Разбиение аннотации экземпляра Product на фильтры*/
-                    String splitter  = supplier.contains("RBT") ? "; " : ", ";
-                    String[] filters = annotation.split(splitter);
-
-                    /*Итерация и отсев неподходящих под фильтры-особенности*/
-                    for (String filter : filters)
-                    {
-                        /*Сформировать фильтры-особенности*/
-                        if (filterIsFeature(filter, supplier)) {
-                            /*Наполнение фильтров-особенностей*/
-                            filtersList.features.add(substringBefore(filter, ":").toUpperCase());
-
-                            /*Отсев дублей фильтров и синонимов фильтров*/ ///
-                            ///filtersList.features.removeIf(featureFilter -> Arrays.stream(notParams).parallel().anyMatch(filterIsDuplicate(checkDuplicate, featureFilter)));
-                            List<String> remove = new ArrayList<>();
-                            filtersList.features.forEach(featureFilter -> {
-                                for (String checkDuplicate : filtersList.features) {
-                                    if (filterIsDuplicate(checkDuplicate, featureFilter)) {
-                                        remove.add(checkDuplicate);
-                                    }
-                                }
-                            });
-                            filtersList.features.removeAll(remove);
-                        }
-                        else if (filterIsParam(filter)) {
-                            String key = substringBefore(filter, ":");
-                            String val = substringAfter(filter, ": ");
-
-                            key = capitalize(key);
-                            val = capitalize(val);
-
-                            /*Digit diapasons*/
-                            if (filterIsDiapasonParam(val)) {
-                                try {
-                                    NumberFormat format = NumberFormat.getInstance(Locale.FRANCE);
-                                    Number number = format.parse(val);
-                                    Double parsedValue = number.doubleValue();
-
-                                    if (filtersList.diapasonsFilters.get(key) != null) {
-                                        TreeSet<Double> vals = filtersList.diapasonsFilters.get(key);
-                                        vals.add(parsedValue);
-                                        filtersList.diapasonsFilters.put(key, vals);
-                                    }
-                                    else filtersList.diapasonsFilters.putIfAbsent(key, new TreeSet<>(Collections.singleton(parsedValue)));
-                                }
-                                catch (ParseException e) {
-                                    e.getSuppressed();
-                                }
-                            }
-
-                            /*Сформировать фильтры-параметры*/
-                            else {
-                                if (filtersList.paramFilters.get(key) != null) {
-                                    TreeSet<String> vals = filtersList.paramFilters.get(key);
-                                    vals.add(val);
-                                    filtersList.paramFilters.put(key, vals);
-                                }
-                                else filtersList.paramFilters.putIfAbsent(key, new TreeSet<>(Collections.singleton(val)));
-                            }
-                        }
+                    if (filterIsValid(annoKey, annoVal)) {
+                        filtersMap.computeIfAbsent(annoKey, val -> new TreeSet<>()).add(annoVal);
                     }
                 }
-            });
+            }
+        });
 
-            /// distinctDiapason()
-            filtersList.diapasonsFilters.forEach((key, val) -> {
-                Double first = Math.floor(val.first());
-                Double last = val.last();
-                val.clear();
-                val.add(first);
-                val.add(last);
-            });
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
+        filtersMap.forEach((key, value) -> log.info(key + ": " + value));
+
+        filtersList.prices = collectPriceFilters(filtersList.prices, products);
+
+        filtersList.brands = collectBrandFilters(filtersList.brands, products);
+
+        filtersList.params = collectParamFilters(filtersList.params, filtersMap);
+
+        filtersList.features = collectFeatureFilters(filtersList.features, filtersMap);
+
+        filtersList.diapasons = collectDiapasonFilters(filtersList.diapasons, filtersMap);
+
+        System.out.println();
+        System.out.println();
+        System.out.println();
+        filtersList.showInfo();
+
         return filtersList;
     }
 
-    /// ОБЪЕДЕНИТЬ
-    public String/*Set<String>*/ createDefaultFilterChecklist(String group) {
+    private Map<String, TreeSet<Double>> collectDiapasonFilters(Map<String, TreeSet<Double>> diapasons, Map<String, TreeSet<String>> filtersMap) {
+        /*Если последнее значение меньше 10, то в параметры*/
+
+        filtersMap.forEach((key, setVals) ->
+        {
+            List<String> checkingVals = setVals.stream().limit(3).collect(Collectors.toList());
+
+            if (isDiapasonVals(checkingVals))
+            {
+                TreeSet<Double> doubleVals = new TreeSet<>();
+                setVals.stream()
+                        .map(stringDiapasonVal -> stringDiapasonVal.replaceAll(",","."))
+                        .mapToDouble(Double::parseDouble)
+                        .forEach(doubleVals::add);
+
+                diapasons.put(key, doubleVals);
+            }
+        });
+
+        return diapasons;
+    }
+
+    private Set<String> collectFeatureFilters(Set<String> features, Map<String, TreeSet<String>> filtersMap) {
+        filtersMap.forEach((key, setVals) -> {
+            if (!paramVals(setVals)) {
+                features.add(key);
+            }
+        });
+
+        return features;
+    }
+
+    private Map<String, TreeSet<String>> collectParamFilters(Map<String, TreeSet<String>> params, Map<String, TreeSet<String>> filtersMap) {
+        filtersMap.forEach((key, setVals) -> {
+            if (paramVals(setVals) && !isDiapasonVals(setVals.stream().limit(3).collect(Collectors.toList()))) {
+                params.put(key, setVals);
+            }
+        });
+
+        return params;
+    }
+
+    private boolean paramVals(TreeSet<String> setVals) {
+        String checkVal = setVals.toString();
+        List<String> notParams = Arrays.asList("есть", "да", "нет");
+
+        for (String check : notParams) {
+            if (containsIgnoreCase(checkVal, check)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private Set<String> collectBrandFilters(Set<String> brands, List<Product> products) {
+        products.forEach(product -> brands.add(StringUtils.capitalize(product.getBrand().toLowerCase())));
+        return brands;
+    }
+
+    private List<Integer> collectPriceFilters(List<Integer> prices, List<Product> products) {
+        int totalProducts = products.size();
+
+        if (totalProducts == 1) {
+            int onePriceVal = Iterables.getFirst(products, null).getFinalPrice();
+            prices.add(onePriceVal);
+            return prices;
+        }
+
+        if (totalProducts > 1) {
+            products.sort(Comparator.comparingInt(Product::getFinalPrice));
+            int min = Iterables.getFirst(products, null).getFinalPrice();
+            int max = Iterables.getLast(products).getFinalPrice();
+
+            prices.add(min);
+            prices.add(max);
+
+            return prices;
+        }
+
+        return new ArrayList<>();
+    }
+
+    private boolean filterIsValid(String annoKey, String annoVal) {
+
+        boolean noDash = !annoVal.equals("-");
+        boolean noZero = !annoVal.equals("0");
+
+        boolean correctKey = !annoKey.equalsIgnoreCase("PRESTIGIO PTV32SS04Z")
+                && !annoKey.equalsIgnoreCase("Название")
+                && !annoKey.equalsIgnoreCase("Модель")
+                && !annoKey.startsWith("количество шт в")
+                && !annoKey.equalsIgnoreCase("Количество камер")
+                && !annoKey.equals("Бренд");
+
+        return correctKey && noDash && noZero;
+    }
+
+    private boolean isDiapasonVals(List<String> checkingVals) {
+        for (String checkingVal : checkingVals)
+        {
+            Pattern pattern = Pattern.compile("^[0-9]{1,10}([,.][0-9]{1,10})?$");
+            Matcher matcher = pattern.matcher(checkingVal);
+
+            if (matcher.matches()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String getChecklist(List<Product> products) {
+        Set<String> checklist = new HashSet<>();
+
+        products.forEach(product -> {
+            checklist.add(StringUtils.capitalize(product.getBrand().toLowerCase()));
+
+            String[] shortAnno = product.getShortAnnotation().split(";");
+            checklist.addAll(Arrays.asList(shortAnno));
+        });
+        return checklist.toString().toLowerCase();
+    }
+
+    public String createDefaultFilterChecklist(String group) {
         List<Product> products = productRepo.findProductsByProductGroupIgnoreCase(group);
-        Set<String> checklist = new HashSet<>();
-
-        products.forEach(product -> {
-            checklist.add(StringUtils.capitalize(product.getBrand().toLowerCase()));
-
-            String[] shortAnno = product.getShortAnnotation().split(";");
-            checklist.addAll(Arrays.asList(shortAnno));
-        });
-        return checklist.toString().toLowerCase();
+        return getChecklist(products);
     }
+
     private String createComputedFilterChecklist(List<Product> products) {
-        Set<String> checklist = new HashSet<>();
-
-        products.forEach(product -> {
-            checklist.add(StringUtils.capitalize(product.getBrand().toLowerCase()));
-
-            String[] shortAnno = product.getShortAnnotation().split(";");
-            checklist.addAll(Arrays.asList(shortAnno));
-        });
-        return checklist.toString().toLowerCase();
+        return getChecklist(products);
     }
 
-    private boolean filterIsFeature(String filter, String supplier) {
+
+
+    /*private boolean filterIsFeature(String filter, String supplier) {
         String[] notContains = {"X1080","''"," ГБ", "Х720", "X480", "МА*Ч"," ГЦ"," ПИНЦЕТОВ", "220 В", " КВТ","АВТООТКЛЮЧЕНИЕ","НЕРЖ."," БАР", " °C","КЭН","ПЭН", "ТЭН", " ГР","АЛЮМИНИЙ /", "T +6 - 20C", "АРТ.","ТРС-3", " Л", " СМ", " ВТ", " ОБ/МИН", " КГ", "в формате HDTV", "КУБ.М/ЧАС", " ДУХОВКА", "КРЫШКА"};
         String[] notEquals   = {"TN", "TFT","A", "A+", "B", "N", "N/ST", "R134A", "R600A", "SN/N/ST", "SN/ST", "ST"};
         String[] colors      = {"МРАМОР", "КОРИЧНЕВЫЙ", "БОРДОВЫЙ", "ВИШНЕВЫЙ", "ЗЕЛЕНЫЙ", "ЗОЛОТОЙ", "КРАСНЫЙ", "РОЗОВЫЙ", "САЛАТОВЫЙ", "БОРДО", "МРАМОР", "СЕРЕБРИСТЫЙ", "СЕРЫЙ", "СИНИЙ", "ФИСТАШКОВЫЙ", "ЦВЕТНОЙ"};
         String[] synonyms    = {"ВЛАГОЗАЩИЩЕННЫЙ КОРПУС", "СЛОТ ДЛЯ ПАМЯТИ", "САМООЧИСТКА", "ВЕРТ. ОТПАРИВАНИЕ", "АВТООТКЛЮЧЕНИЕ", "СИСТЕМА РЕВЕРСА", "3D-НАГРЕВ"};
 
-        /*Основное условие*/
-        if ((filter.contains(": есть") || filter.contains(": да")) || (supplier.contains("RUS-BT") && !filter.contains(":")))
+        *//*Основное условие*//*
+        if ((filter.contains(": есть") || filter.contains(": да")) || (supplier.contains("RUSBT") && !filter.contains(":")))
         {
-            /*Спецефический отсев*/ /// В мультипоток
+            *//*Спецефический отсев*//* /// В мультипоток
             for (String word : notContains) {
                 if (containsIgnoreCase(filter, word)) return false;
             }
@@ -311,14 +365,14 @@ public class ProductService {
             return true;
         }
         return false;
-    }
+    }*/
 
-    private boolean filterIsParam(String filter) {
+    /*private boolean filterIsParam(String filter) {
         String[] notParams = {"нет", "0",  "-"};
         String[] notKeys = {"количество шт в"};
         String[] duplicates = {"БРИТВЕННЫХ ГОЛОВОК"};
 
-        /*Основное условие*/
+        *//*Основное условие*//*
         if (filter.contains(":"))
         {
             for (String word : notKeys) {
@@ -334,15 +388,11 @@ public class ProductService {
             return true;
         }
         return false;
-    }
+    }*/
 
-    private boolean filterIsDiapasonParam(String val) {
-        Pattern pattern = Pattern.compile("^[0-9]{1,10}([,.][0-9]{1,10})?$");
-        Matcher matcher = pattern.matcher(val);
-        return !val.equals("0") && matcher.matches();
-    }
 
-    private boolean filterIsDuplicate(String checkDuplicate, String featureFilter) {
+
+    /*private boolean filterIsDuplicate(String checkDuplicate, String featureFilter) {
         String[] dontMatch = {"FULL HD (1080P)", "ULTRA HD (2160P)"};
 
         if (containsIgnoreCase(checkDuplicate, featureFilter) & !equalsIgnoreCase(checkDuplicate, featureFilter))
@@ -353,7 +403,7 @@ public class ProductService {
             return true;
         }
         return false;
-    }
+    }*/
 
     public Product getProductByID(String productID) {
         return productRepo.findByProductID(productID);

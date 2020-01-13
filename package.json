@@ -34,6 +34,7 @@
     "copy-webpack-plugin": "^5.0.5",
     "css-loader": "^3.2.0",
     "file-loader": "^4.2.0",
+    "vue-cli-plugin-quasar": "^2.0.0",
     "vue-loader": "^15.7.1",
     "vue-style-loader": "^4.1.2",
     "vue-template-compiler": "^2.6.10",

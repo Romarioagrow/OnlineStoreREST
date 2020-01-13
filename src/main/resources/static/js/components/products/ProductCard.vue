@@ -28,9 +28,10 @@
                 {{product.singleTypeName}}
             </b-card-sub-title>
 
-            <v-card-text >
+            <v-card-text>
                 <router-link :to=showProductInfo>
-                    <div class="align-top fill-height headline">{{product.brand}} {{product.modelName}}</div>
+                    <div v-if="product.modelName" class="align-top fill-height headline">{{product.brand}} {{product.modelName}}</div>
+                    <div v-else class="align-top fill-height headline">{{product.originalName}} </div>
                 </router-link>
             </v-card-text>
 

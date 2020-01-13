@@ -92,12 +92,12 @@
                         <!--Если несколько фото-->
                         <div v-else>
                             <a @mouseover="this.style.cursor='pointer'">
-                                <v-img class="white--text" contain max-height="300" :src="mainOfFewPhoto" alt="Bad Link" @click.stop="picDialog = true"></v-img>
+                                <v-img class="white--text" contain max-height="300" :src="mainPhoto" alt="Bad Link" @click.stop="picDialog = true"></v-img>
                             </a>
 
                             <v-dialog v-model="picDialog" max-width="80%">
                                 <v-card>
-                                    <v-img class="white--text" height="1000" contain :src="mainOfFewPhoto" alt="Bad Link" @click.stop="picDialog = true"></v-img>
+                                    <v-img class="white--text" height="1000" contain :src="mainPhoto" alt="Bad Link" @click.stop="picDialog = true"></v-img>
                                 </v-card>
                             </v-dialog>
 
@@ -156,7 +156,7 @@
                 formattedAnno:{},
                 annotationOrig: {},
                 fewPics: [],
-                mainOfFewPhoto: ''
+                mainPhoto: ''
             }
         },
         beforeCreate() {
@@ -196,7 +196,7 @@
                 })
 
                 this.fewPics = this.product.pics.split(';').filter(pic => pic)
-                this.mainOfFewPhoto = this.fewPics[0]
+                this.mainPhoto = this.fewPics[0]
                 console.log(this.fewPics)
             });
         },
@@ -215,10 +215,11 @@
                 this.$router.push('/order')
             },
             activePhoto(pic) {
-                this.mainOfFewPhoto = pic
+                this.mainPhoto = pic
             }
         }
     }
 </script>
 
 <style scoped></style>
+
