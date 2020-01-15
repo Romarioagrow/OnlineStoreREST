@@ -107,6 +107,9 @@ public class ProductService {
         String filterKey = substringBefore(filtersPair.getKey(), ";");
         String filterVal = extractFilterValue(filtersPair);
 
+        log.info(filterKey);
+        log.info(filterVal);
+
         switch (filterKey) {
             case "price": return filterProductsByPrice(products, filterVal);
             case "brand": return filterProductsByBrands(products, filterVal);

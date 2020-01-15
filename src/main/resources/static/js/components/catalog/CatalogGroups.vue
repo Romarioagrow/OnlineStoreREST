@@ -20,9 +20,7 @@
 
 <script>
     export default {
-        props: {
-            group: []
-        },
+        props: ['group'],
         data() {
             return {
                 path: '/products/' + this.group[0].toLowerCase().replace(' ', '_'),

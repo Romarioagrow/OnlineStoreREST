@@ -71,38 +71,38 @@
                         </v-expansion-panel-header>
 
                         <v-expansion-panel-content>
-                                <v-range-slider
-                                        style="margin-top: 1.5rem;"
-                                        v-model="priceRange"
-                                        :min="min"
-                                        :max="max"
-                                        hide-details
-                                        color="#e52d00"
-                                        @end="filterProducts('price;' + priceRange)"
-                                >
-                                    <template v-slot:prepend>
-                                        <v-text-field
-                                                @input="filterProducts('price;' + priceRange[0] + ',' + priceRange[1])"
-                                                color="#e52d00"
-                                                v-model="priceRange[0]"
-                                                type="string"
-                                                style="width: 80px;"
-                                                outlined dense
-                                        >
-                                        </v-text-field>
-                                    </template>
-                                    <template v-slot:append>
-                                        <v-text-field
-                                                @input="filterProducts('price;' + priceRange[0] + ',' + priceRange[1])"
-                                                color="#e52d00"
-                                                v-model="priceRange[1]"
-                                                type="string"
-                                                style="width: 80px;"
-                                                outlined dense
-                                        >
-                                        </v-text-field>
-                                    </template>
-                                </v-range-slider>
+                            <v-range-slider
+                                    style="margin-top: 1.5rem;"
+                                    v-model="priceRange"
+                                    :min="priceMin"
+                                    :max="priceMax"
+                                    hide-details
+                                    color="#e52d00"
+                                    @end="filterProducts('price;' + priceRange)"
+                            >
+                                <template v-slot:prepend>
+                                    <v-text-field
+                                            @input="filterProducts('price;' + priceRange[0] + ',' + priceRange[1])"
+                                            color="#e52d00"
+                                            v-model="priceRange[0]"
+                                            type="string"
+                                            style="width: 80px;"
+                                            outlined dense
+                                    >
+                                    </v-text-field>
+                                </template>
+                                <template v-slot:append>
+                                    <v-text-field
+                                            @input="filterProducts('price;' + priceRange[0] + ',' + priceRange[1])"
+                                            color="#e52d00"
+                                            v-model="priceRange[1]"
+                                            type="string"
+                                            style="width: 80px;"
+                                            outlined dense
+                                    >
+                                    </v-text-field>
+                                </template>
+                            </v-range-slider>
                         </v-expansion-panel-content>
                     </v-expansion-panel>
 
@@ -170,47 +170,16 @@
                     !!! ПРИ ПЕРЕТАСКИВАНИИ И ОТПУСКАНИИ ПОЛУЗНКА ЗНАЧЕНИЕ В ПОЛЕ ВОЗВРАЩАЕТСЯ К ДЕФОЛТНОМУ, НО В МОДЕЛЬ ПОПАДАЕТ УСТАНОВЛЕННОЕ
                     !!! ПРИ ВВОДЕ ЗНАЧЕНИЯ ВРУЧНУЮ, ОНО СТАНОВИТСЯ МАКСИМАЛЬНЫМ/МИНИМАЛЬНЫМ ДЛЯ ПОЛЗУНКА, ФИЛЬТРАЦИЯ НЕ РАБОТАЕТ
                     -->
-                    <!--
-                    :min="diapasonValues.get(key)[0]"
-                    :max="diapasonValues.get(key)[1]"
-                    -->
-                    <v-expansion-panel v-for="[key, val] of filtersDiapasons" :key="key">
-                        <v-expansion-panel-header ripple>
-                            {{ toUpperCase(key) }}
-                        </v-expansion-panel-header>
 
-                        <v-expansion-panel-content eager>
-                            <v-range-slider
-                                    color="#e52d00"
-                                    v-model="val"
-                                    :min="val[0]"
-                                    :max="val[1]"
-                                    hide-details
-                                    class="align-center"
-                                    @end="filterProducts('diapason;' + key + ':' + val)"
-                            >
-                                <template v-slot:prepend>
-                                    <v-text-field outlined dense readonly
-                                            color="#e52d00"
-                                            @input="filterProducts('diapason;' + key + ':' + val[0] + ',' + val[1])"
-                                            v-model="val[0]"
-                                            type="string"
-                                            style="width: 60px; margin-top: 1.5rem;">
-                                    </v-text-field>
-                                </template>
-                                <template v-slot:append>
-                                    <v-text-field outlined dense readonly
-                                            color="#e52d00"
-                                            @input="filterProducts('diapason;' + key + ':' + val[0] + ',' + val[1])"
-                                            v-model="val[1]"
-                                            type="string"
-                                            style="width: 60px; margin-top: 1.5rem;">
-                                    </v-text-field>
-                                </template>
-                            </v-range-slider>
-
-                        </v-expansion-panel-content>
-                    </v-expansion-panel>
+                    <diapason-slider v-for="[diapasonKey, diapasonVal] of filtersDiapasons"
+                                     :key="diapasonKey"
+                                     :diapasonKey="diapasonKey"
+                                     :diapasonVal="diapasonVal"
+                                     :filtersDiapasons="filtersDiapasons"
+                                     :filtersMap="filtersMap"
+                                     :filterProducts="filterProducts"
+                    >
+                    </diapason-slider>
                 </v-expansion-panels>
             </v-card-actions>
         </v-navigation-drawer>
@@ -232,7 +201,8 @@
                                 depressed
                                 rounded
                                 @click="toggle"
-                                @mouseup="filterProducts('feature;' + feature)">
+                                @mouseup="filterProducts('feature;' + feature)"
+                        >
                             {{ feature }}
                         </v-btn>
                     </v-slide-item>
@@ -264,8 +234,9 @@
 <script>
     import axios from 'axios'
     import ProductCard from "components/products/ProductCard.vue";
+    import DiapasonSlider from "components/products/DiapasonSlider.vue";
     export default {
-        components: {ProductCard},
+        components: {ProductCard, DiapasonSlider},
         data() {
             return {
                 showFilters: true,
@@ -283,8 +254,8 @@
                 diapasonValues: new Map(),
                 filtersParams: new Map(),
                 group: decodeURI(window.location.href).substr(decodeURI(window.location.href).lastIndexOf('/') + 1),
-                min: '',
-                max: '',
+                priceMin: '',
+                priceMax: '',
                 priceRange: [],
                 totalPages: 0,
                 linkCategory: '',
@@ -299,7 +270,6 @@
                 showFiltersButtonToolbar: false,
                 loadingMoreProducts: false,
                 filtersChecklist: [],
-                filtersQueue: [],
                 filtersMap: new Map()
             }
         },
@@ -323,37 +293,40 @@
                 *   }
                 */
 
+                //console.log(filter)
                 this.filtersScrollPage = 0
 
                 /*Обработка неповторяющихся фильтров*/
-                if (filter.startsWith('feature') || filter.startsWith('param') || filter.startsWith('brand')) {
-                    if (!this.filtersMap.has(filter)) {
-                        this.filtersMap.set(filter,'')
+                if (!filter.startsWith('reset'))
+                {
+                    if (filter.startsWith('feature') || filter.startsWith('param') || filter.startsWith('brand')) {
+                        if (!this.filtersMap.has(filter)) {
+                            this.filtersMap.set(filter,'')
+                        }
+                        else this.filtersMap.delete(filter)
                     }
-                    else this.filtersMap.delete(filter)
-                }
 
-                if (filter.startsWith('diapason')) {
-                    let filterKey = filter.substr(0, filter.indexOf(':'))
-                    let filterVal = filter.substr(filter.indexOf(':') + 1)
-                    this.filtersMap.set(filterKey, filterVal)
-                }
+                    if (filter.startsWith('diapason')) {
+                        let filterKey = filter.substr(0, filter.indexOf(':'))
+                        let filterVal = filter.substr(filter.indexOf(':') + 1)
+                        this.filtersMap.set(filterKey, filterVal)
+                    }
 
-                if (filter.startsWith('price')) {
-                    let priceKey = filter.substr(0, filter.indexOf(';'))
-                    let priceVal = filter.substr(filter.indexOf(';') + 1)
-                    this.filtersMap.set(priceKey, priceVal)
+                    if (filter.startsWith('price')) {
+                        let priceKey = filter.substr(0, filter.indexOf(';'))
+                        let priceVal = filter.substr(filter.indexOf(';') + 1)
+                        this.filtersMap.set(priceKey, priceVal)
+                    }
                 }
 
                 const filtersPayload = this.payloadFilters(this.filtersMap)
-                ///console.log(filtersPayload)
+                console.log(this.filtersMap)
 
                 /*ОТПРАВИТЬ ЗАПРОС НА ФИЛЬТРАЦИЮ НА СЕРВЕР*/
                 const filterURL = '/api/products/filter' + this.requestGroup + '/' + this.filtersScrollPage
                 axios.post(filterURL, filtersPayload).then(response => {
                     const page = response.data[0]
                     const filtersCheckList = response.data[1]
-
                     this.products = page.content
                     this.totalProductsFound = page.totalElements
                     this.filtersChecklist = filtersCheckList
@@ -393,8 +366,8 @@
                 this.filtersChecklist = response.data.checklist
 
                 let prices = response.data.prices
-                this.min = prices[0]
-                this.max = prices[1]
+                this.priceMin = prices[0]
+                this.priceMax = prices[1]
                 this.priceRange[0] = prices[0]
                 this.priceRange[1] = prices[1]
 
@@ -404,9 +377,20 @@
                 let diapasons = response.data.diapasons
                 for (let [key, value] of Object.entries(diapasons)) {
                     this.filtersDiapasons.set(key, value.slice(", "))
-                    this.diapasonValues.set(key, value.slice(", "))
-                    //console.log(this.diapasonValues)
+
+                    //this.diapasonValues.set(key, value.slice(", "))
+                    /*console.log(key)
+                    console.log(value)*/
+                    /// массив объектов
+                    /// карта объектов
+
+                    /*this.diapasonsObject[key] = {
+                        'min': value[0],
+                        'max': value[1],
+                        'range': value
+                    }*/
                 }
+                //console.log(this.diapasonsObject)
 
                 let params = response.data.params
                 for (const [key, value] of Object.entries(params)) this.filtersParams.set(key, value)
@@ -420,7 +404,6 @@
                 this.totalPages = response.data.totalPages
                 this.totalProductsFound = response.data.totalElements
                 this.linkCategory = this.products[0].productCategory
-
                 this.loadingProducts = false
             })
         },
