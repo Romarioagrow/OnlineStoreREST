@@ -16,11 +16,9 @@ public class Product implements Serializable {
     @Column(name = "product_id")
     private String productID;
 
-    private String productCategory, productGroup, productType;
+    private String productCategory, productGroup, brand, supplier;
 
     private Integer finalPrice, bonus, defaultPrice;
-
-    private String brand, supplier;
 
     private LocalDate updateDate;
 
@@ -36,7 +34,7 @@ public class Product implements Serializable {
     private Boolean priceModified;
 
     @JsonIgnore
-    private Boolean uniquePrice, coefficientModified, annotationParsed, mappedByJson, modelNameParsed;
+    private Boolean uniquePrice, coefficientModified, annotationParsed, mappedByJson;
 
     public Product(String productID) {
         this.productID = productID;

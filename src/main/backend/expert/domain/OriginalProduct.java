@@ -15,7 +15,7 @@ public class OriginalProduct {
     private String productID;
 
     @Column(length = 10000)
-    private String originalCategory, originalGroup, originalType, originalName, originalBrand, originalAmount, originalPrice;
+    private String originalCategory, originalGroup, originalType, originalName, originalBrand, originalAmount, originalPrice, parsedModelName;
     private String supplier;
 
     @Column(length = 20000)
@@ -23,7 +23,7 @@ public class OriginalProduct {
 
     private LocalDate updateDate;
 
-    private Boolean priceModified, coefficientModified, annotationParsed;
+    private Boolean priceModified, coefficientModified, annotationParsed, modelNameParsed;
 
     private Integer finalPrice, defaultPrice, bonus;
 }

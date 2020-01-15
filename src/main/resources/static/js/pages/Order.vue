@@ -281,7 +281,24 @@
                             </v-dialog>
                         </v-card-actions>
                     </v-card>
-                    <v-card v-else>
+
+
+                        <v-row align="center" justify="center" v-else>
+                            <v-card width="300">
+                                <v-card-title>
+                                    Корзина пуста
+                                </v-card-title>
+                                <v-card-actions class="chartAreaWrapper">
+                                    <v-btn color="#e52d00" block dark @click="toCatalog()">
+                                        В каталог
+                                    </v-btn>
+                                </v-card-actions>
+                            </v-card>
+                        </v-row>
+
+
+
+                    <!--<v-card v-else width="300">
                         <v-card-title>
                             Корзина пуста
                         </v-card-title>
@@ -290,7 +307,7 @@
                                 В каталог
                             </v-btn>
                         </v-card-actions>
-                    </v-card>
+                    </v-card>-->
                 </v-col>
             </v-row>
         </b-container>

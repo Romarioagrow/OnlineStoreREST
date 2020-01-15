@@ -267,7 +267,7 @@ public class ProductBuilder {
         String fullName       = resolveFullName(originalName, modelName, singleTypeName, originalBrand).trim();
         String groupBrandName = resolveBrandName(singleTypeName, originalBrand).trim();
         //String searchName     = resolveSearchName(modelName, singleTypeName, originalBrand).trim();
-        String searchName     = resolveSearchName(product.getSingleTypeName(), originalName).trim();
+        String searchName     = resolveSearchName(originalProduct, modelName, singleTypeName).trim();
         String shortModelName = resolveShortModel(modelName).trim();
         String pic            = resolveProductPic(originalProduct);
         String shortAnnotation      = resolveShortAnnotation(annotation, originalProduct);
@@ -356,6 +356,9 @@ public class ProductBuilder {
     /*Пост-обработка разметки*/
     private void checkProductsCorrect() {
         log.info("checkProductGroupCorrect...");
+
+
+        /*В ГРУППУ Кабели тв заменить в аннотации Разьем на Разъем*/
 
         Thread thread = new Thread(() -> productRepo.findByProductGroupIgnoreCase("Клавиатуры, мыши, комплекты").forEach(product -> {
             if (product.getSingleTypeName().contains("мышь")) {
@@ -542,9 +545,9 @@ public class ProductBuilder {
                 Thread parsInfo = new Thread(() ->
                 {
                     /*исключить Деколь и установить modelName*/
-
                     Element productParams = page.getElementById("tabs-2");
                     Elements productInfo = page.getElementsByClass("bx_item_description");
+
                     Elements infoKeys = productParams.getElementsByClass("left_prop");
                     Elements infoVals = productParams.getElementsByClass("left_value");
 
@@ -565,8 +568,8 @@ public class ProductBuilder {
                             annotation = annotation.concat(anno);
 
                             if (key.startsWith("Модель")) {
-                                product.setModelName(val);
-                                product.setModelNameParsed(true);
+                                originalProduct.setParsedModelName(val);
+                                originalProduct.setModelNameParsed(true);
                             }
 
                             log.info(key + ": " + val);
@@ -616,9 +619,7 @@ public class ProductBuilder {
         log.info("ConnectException: " + connectionError);
 
         productRepo.findAll().forEach(product -> {
-            // setShortAnnotation
-            // setSearchName
-            // shortModelName
+            product.setShortAnnotation(resolveShortAnnotation(product.getAnnotation(), originalRepo.findByProductID(product.getProductID())));
         });
 
     }
@@ -689,7 +690,9 @@ public class ProductBuilder {
 
             shortAnnotation = filters.toString().replaceAll("\\[|\\]","");
 
-            if (!shortAnnotation.endsWith(";")) shortAnnotation = shortAnnotation.concat(";");
+            if (!shortAnnotation.endsWith(";")) {
+                shortAnnotation = shortAnnotation.concat(";");
+            }
             shortAnnotation = shortAnnotation.replaceAll(", ", ";");
 
             return shortAnnotation;
@@ -754,7 +757,9 @@ public class ProductBuilder {
         }
         else shortModelName = modelName.replaceAll(" ", "");
 
-        return shortModelName.replaceAll("-", "").replaceAll("_", "").replaceAll("\\.", "").replaceAll(",", "").replaceAll("\\(", "").replaceAll("\\)", "").replaceAll("/", "").toLowerCase();
+        //return shortModelName.replaceAll("-", "").replaceAll("_", "").replaceAll("\\.", "").replaceAll(",", "").replaceAll("\\(", "").replaceAll("\\)", "").replaceAll("/", "").toLowerCase();
+
+        return shortModelName.replaceAll("\\s|\\p{P}","");
     }
 
     private String resolveAnnotation(OriginalProduct originalProduct, boolean supplierRBT) {
@@ -767,10 +772,17 @@ public class ProductBuilder {
         return !annotation.isEmpty() ? annotation : originalProduct.getOriginalName();
     }
 
-    private String resolveSearchName(String singleTypeName, String originalName) {
-        //String searchName = ;
+    private String resolveSearchName(OriginalProduct originalProduct, String modelName, String singleType) {
+        String searchName;
 
-        return null;
+        if (!modelName.isEmpty()) {
+            searchName = singleType.concat(originalProduct.getOriginalBrand().concat(modelName));
+        }
+        else {
+            searchName = originalProduct.getOriginalName();
+        }
+
+        return searchName.toLowerCase().replaceAll(" ","").concat(searchName.toLowerCase().replaceAll("\\s|\\p{P}",""));
     }
 
     /*private String resolveSearchName(String modelName, String singleTypeName, String originalBrand) {
@@ -865,7 +877,13 @@ public class ProductBuilder {
         return StringUtils.capitalize(fullName);
     }*/
     private String resolveFullName(String originalName, String modelName, String singleTypeName, String originalBrand) {
-        String fullName = singleTypeName.trim().concat(" ").concat(StringUtils.capitalize(originalBrand.toLowerCase()).trim()).concat(" ").concat(modelName.trim());
+        String fullName;
+
+        if (modelName.isEmpty()) {
+            return StringUtils.capitalize(singleTypeName.concat(" ").concat(originalName));
+        }
+
+        fullName = singleTypeName.trim().concat(" ").concat(StringUtils.capitalize(originalBrand.toLowerCase()).trim()).concat(" ").concat(modelName.trim());
 
         if (fullName.isEmpty()) {
             fullName = StringUtils.capitalize(StringUtils.substringBefore(originalName, ", "));
@@ -878,6 +896,11 @@ public class ProductBuilder {
         String originalBrand = originalProduct.getOriginalBrand().toLowerCase();
         String originalName = originalProduct.getOriginalName().toLowerCase();
         String modelName;
+
+        /*Если modelName взято из базы поставщика*/
+        if (originalProduct.getModelNameParsed() != null) {
+            return originalProduct.getParsedModelName();
+        }
 
         /*Формирование modelName*/
         if (originalProduct.getSupplier().equals("RBT") && !originalBrand.isEmpty()) {

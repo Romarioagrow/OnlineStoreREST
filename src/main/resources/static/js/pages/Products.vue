@@ -71,7 +71,6 @@
                         </v-expansion-panel-header>
 
                         <v-expansion-panel-content>
-
                                 <v-range-slider
                                         style="margin-top: 1.5rem;"
                                         v-model="priceRange"
@@ -108,6 +107,7 @@
                     </v-expansion-panel>
 
                     <!--Фильтры-бренды checkbox-->
+                    <!--ЕСЛИ НЕТ ФИЛЬТРОВ И ВЫБРАННО НЕСКОЛЬКО БРЕНДОВ, ТО ФИЛЬТРОВАТЬ КАК ИЛИ, И СРЕДИ ЭТИХ БРЕНДОВ ФИЛЬТРОВАТЬ МОДЕЛЬ В ГЛУБИНУ; ЕСЛИ БРЕНДЫ НЕ ВЫБРАНЫ, ТО ФИЛЬТРОВАТЬ В ГУЛБИНУ КАК ОБЫЧНО, И ДЛЯ БРЕНДОВ ТОЖЕ -->
                     <v-expansion-panel ripple >
                         <v-expansion-panel-header ripple>
                             Бренды
@@ -116,14 +116,16 @@
                         <v-expansion-panel-content eager style="margin-top: 10px">
                             <div v-for="brand in twoColsBrands">
                                 <v-row>
-                                    <v-col class="pt-0 pb-0">
+                                    <v-col class="pt-0 pb-0 ">
                                         <v-checkbox
                                                 color="#e52d00"
                                                 @change="filterProducts('brand;' + brand.firstBrand)"
                                                 v-model="selectedBrands"
                                                 :label="brand.firstBrand"
                                                 :value="brand.firstBrand"
-                                                height="2"></v-checkbox>
+                                                height="2">
+
+                                        </v-checkbox>
                                     </v-col>
                                     <v-col v-if="brand.secondBrand !== undefined" class="pt-0 pb-0">
                                         <v-checkbox
@@ -132,7 +134,8 @@
                                                 v-model="selectedBrands"
                                                 :label="brand.secondBrand"
                                                 :value="brand.secondBrand"
-                                                height="2"></v-checkbox>
+                                                height="2">
+                                        </v-checkbox>
                                     </v-col>
                                 </v-row>
                             </div>
@@ -161,9 +164,16 @@
                         </v-expansion-panel-content>
                     </v-expansion-panel>
 
+
                     <!--Фильтры-диапазоны input-->
-                    <!--!!! ПРИ ПЕРЕТАСКИВАНИИ И ОТПУСКАНИИ ПОЛУЗНКА ЗНАЧЕНИЕ В ПОЛЕ ВОЗВРАЩАЕТСЯ К ДЕФОЛТНОМУ, НО В МОДЕЛЬ ПОПАДАЕТ УСТАНОВЛЕННОЕ-->
-                    <!--!!! ПРИ ВВОДЕ ЗНАЧЕНИЯ ВРУЧНУЮ, ОНО СТАНОВИТСЯ МАКСИМАЛЬНЫМ/МИНИМАЛЬНЫМ ДЛЯ ПОЛЗУНКА, ФИЛЬТРАЦИЯ НЕ РАБОТАЕТ-->
+                    <!--
+                    !!! ПРИ ПЕРЕТАСКИВАНИИ И ОТПУСКАНИИ ПОЛУЗНКА ЗНАЧЕНИЕ В ПОЛЕ ВОЗВРАЩАЕТСЯ К ДЕФОЛТНОМУ, НО В МОДЕЛЬ ПОПАДАЕТ УСТАНОВЛЕННОЕ
+                    !!! ПРИ ВВОДЕ ЗНАЧЕНИЯ ВРУЧНУЮ, ОНО СТАНОВИТСЯ МАКСИМАЛЬНЫМ/МИНИМАЛЬНЫМ ДЛЯ ПОЛЗУНКА, ФИЛЬТРАЦИЯ НЕ РАБОТАЕТ
+                    -->
+                    <!--
+                    :min="diapasonValues.get(key)[0]"
+                    :max="diapasonValues.get(key)[1]"
+                    -->
                     <v-expansion-panel v-for="[key, val] of filtersDiapasons" :key="key">
                         <v-expansion-panel-header ripple>
                             {{ toUpperCase(key) }}
@@ -177,12 +187,12 @@
                                     :max="val[1]"
                                     hide-details
                                     class="align-center"
-                                    @end="filterProducts('diapason;' + key +':'+ val)"
+                                    @end="filterProducts('diapason;' + key + ':' + val)"
                             >
                                 <template v-slot:prepend>
                                     <v-text-field outlined dense readonly
                                             color="#e52d00"
-                                            @input="filterProducts('diapason;' + key +':'+ diapasonValues.get(key))"
+                                            @input="filterProducts('diapason;' + key + ':' + val[0] + ',' + val[1])"
                                             v-model="val[0]"
                                             type="string"
                                             style="width: 60px; margin-top: 1.5rem;">
@@ -191,7 +201,7 @@
                                 <template v-slot:append>
                                     <v-text-field outlined dense readonly
                                             color="#e52d00"
-                                            @input="filterProducts('diapason;' + key +':'+ diapasonValues.get(key))"
+                                            @input="filterProducts('diapason;' + key + ':' + val[0] + ',' + val[1])"
                                             v-model="val[1]"
                                             type="string"
                                             style="width: 60px; margin-top: 1.5rem;">
@@ -289,7 +299,83 @@
                 showFiltersButtonToolbar: false,
                 loadingMoreProducts: false,
                 filtersChecklist: [],
-                filtersQueue: []
+                filtersQueue: [],
+                filtersMap: new Map()
+            }
+        },
+        methods: {
+            checkFilterInCheckList(value) {
+                const val = value.toString().toLowerCase().trim()
+                return !this.filtersChecklist.includes(val)
+            },
+            loadPage(page) {
+                let pageRequest = this.pageRequest + '/' + page
+                axios.get(pageRequest).then(response =>
+                    this.products = response.data.content)
+            },
+
+            /*ФИЛЬТРАЦИЯ ТОВАРОВ*/
+            filterProducts(filter) {
+                /*ЕСЛИ ФИЛЬТР ОДИН В ОКНЕ, ТО В ОСОБЕННОСТИ*/
+                /*  delete filter(filter) {
+                *       key = getKeyFilter
+                *       this.filtersMap.delete(key)
+                *   }
+                */
+
+                this.filtersScrollPage = 0
+
+                /*Обработка неповторяющихся фильтров*/
+                if (filter.startsWith('feature') || filter.startsWith('param') || filter.startsWith('brand')) {
+                    if (!this.filtersMap.has(filter)) {
+                        this.filtersMap.set(filter,'')
+                    }
+                    else this.filtersMap.delete(filter)
+                }
+
+                if (filter.startsWith('diapason')) {
+                    let filterKey = filter.substr(0, filter.indexOf(':'))
+                    let filterVal = filter.substr(filter.indexOf(':') + 1)
+                    this.filtersMap.set(filterKey, filterVal)
+                }
+
+                if (filter.startsWith('price')) {
+                    let priceKey = filter.substr(0, filter.indexOf(';'))
+                    let priceVal = filter.substr(filter.indexOf(';') + 1)
+                    this.filtersMap.set(priceKey, priceVal)
+                }
+
+                const filtersPayload = this.payloadFilters(this.filtersMap)
+                ///console.log(filtersPayload)
+
+                /*ОТПРАВИТЬ ЗАПРОС НА ФИЛЬТРАЦИЮ НА СЕРВЕР*/
+                const filterURL = '/api/products/filter' + this.requestGroup + '/' + this.filtersScrollPage
+                axios.post(filterURL, filtersPayload).then(response => {
+                    const page = response.data[0]
+                    const filtersCheckList = response.data[1]
+
+                    this.products = page.content
+                    this.totalProductsFound = page.totalElements
+                    this.filtersChecklist = filtersCheckList
+                })
+            },
+            hideFilters() {
+                this.showFilters = false
+                this.showFiltersButtonToolbar = true
+            },
+            returnFilters() {
+                this.showFilters = true
+                this.showFiltersButtonToolbar = false
+            },
+            toUpperCase(param) {
+                return param.charAt(0).toUpperCase() + param.substr(1)
+            },
+            payloadFilters(filtersMap) {
+                let payload = {}
+                filtersMap.forEach((val, key) => {
+                    payload[key] = val
+                });
+                return payload
             }
         },
         created() {
@@ -304,11 +390,7 @@
 
             /*ЗАГРУЗИТЬ СПИСОК ФИЛЬТРОВ*/
             axios.get(this.filtersRequest).then(response => {
-
-                console.log(response.data)
-
                 this.filtersChecklist = response.data.checklist
-                console.log(this.filtersChecklist)
 
                 let prices = response.data.prices
                 this.min = prices[0]
@@ -323,6 +405,7 @@
                 for (let [key, value] of Object.entries(diapasons)) {
                     this.filtersDiapasons.set(key, value.slice(", "))
                     this.diapasonValues.set(key, value.slice(", "))
+                    //console.log(this.diapasonValues)
                 }
 
                 let params = response.data.params
@@ -331,7 +414,7 @@
                 this.loadingFilters = false
             });
 
-            /*Load Products*/
+            /*ЗАГРУЗИТЬ PAGE ТОВАРОВ*/
             axios.get(this.productsRequest).then(response => {
                 this.products = response.data.content
                 this.totalPages = response.data.totalPages
@@ -342,7 +425,6 @@
             })
         },
         mounted() {
-
             /*ПОДРУЗИТЬ ТОВАРЫ ПРИ ПРОМОТКИ ДО НИЗА ЭКРАНА*/
             window.onscroll = () => {
                 const el = document.documentElement
@@ -351,13 +433,12 @@
                 if(isBottomOfScreen) {
                     console.log('bottomLoad')
 
-                    if (Object.keys(this.filtersQueue).length === 0) {
+                    if (this.filtersMap.length === 0) {
                         if (this.products.length >=15 ) {
                             this.loadingMoreProducts = true
                         }
 
-                        axios.get('/api/products/group'+this.requestGroup + '/' + this.scrollPage).then(response => {
-                            //console.log(response.data.content)
+                        axios.get('/api/products/group' + this.requestGroup + '/' + this.scrollPage).then(response => {
                             this.products = this.products.concat(response.data.content)
                             this.scrollPage+=1
                             this.loadingMoreProducts = false
@@ -365,13 +446,14 @@
                     }
                     else
                     {
-                        if (this.products.length >=15 ) {
+                        if (this.products.length >= 15) {
                             this.loadingMoreProducts = true
-
                             this.filtersScrollPage+=1
-                            const filterURL = '/api/products/filter' + this.requestGroup + '/' + this.filtersScrollPage
 
-                            axios.post(filterURL, this.filtersQueue).then(response => {
+                            const filterURL = '/api/products/filter' + this.requestGroup + '/' + this.filtersScrollPage
+                            const filtersPayload = this.payloadFilters(this.filtersMap)
+
+                            axios.post(filterURL, filtersPayload).then(response => {
                                 console.log(response.data[0].content)
                                 this.products = this.products.concat(response.data[0].content)
                                 this.loadingMoreProducts = false
@@ -399,63 +481,6 @@
             },
             filterButton() {
                 return this.$store.state.filtersClosedButton
-            }
-        },
-        methods: {
-            checkFilterInCheckList(value) {
-                const val = value.toString().toLowerCase().trim()
-                return !this.filtersChecklist.includes(val)
-            },
-            loadPage(page) {
-                let pageRequest = this.pageRequest + '/' + page
-                axios.get(pageRequest).then(response =>
-                    this.products = response.data.content)
-            },
-
-            /*ФИЛЬТРАЦИЯ ТОВАРОВ*/
-            filterProducts(param) {
-
-                this.filtersScrollPage = 0
-
-                if (param.includes('diapason;') || param.includes('price;')) {
-                    let checkDiapason = param.substr(0, param.lastIndexOf(':'))
-
-                    for (let filter in this.filtersQueue) {
-                        if (this.filtersQueue[filter].includes(checkDiapason)) {
-                            this.filtersQueue.splice(this.filtersQueue.indexOf(this.filtersQueue[filter]), 1);
-                        }
-                    }
-                }
-
-                if (this.filtersQueue.includes(param)) {
-                    console.log('удаление из массива')
-                    this.filtersQueue.splice(this.filtersQueue.indexOf(param), 1);
-                }
-                else this.filtersQueue.push(param)
-
-                console.log(this.filtersQueue)
-
-                const filterURL = '/api/products/filter' + this.requestGroup + '/' + this.filtersScrollPage
-                axios.post(filterURL, this.filtersQueue).then(response => {
-                    const page = response.data[0]
-                    const filtersCheckList = response.data[1]
-
-                    this.products = page.content
-                    this.totalPages = page.totalPages
-                    this.totalProductsFound = page.totalElements
-                    this.filtersChecklist = filtersCheckList
-                })
-            },
-            hideFilters() {
-                this.showFilters = false
-                this.showFiltersButtonToolbar = true
-            },
-            returnFilters() {
-                this.showFilters = true
-                this.showFiltersButtonToolbar = false
-            },
-            toUpperCase(param) {
-                return param.charAt(0).toUpperCase() + param.substr(1)
             }
         }
     }

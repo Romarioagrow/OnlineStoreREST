@@ -22,10 +22,12 @@ public class ProductApiController {
 
     @PostMapping("/filter/{group}/{page}")
     private LinkedList<Object> filterProducts(
-            @RequestBody LinkedList<String> filters,
+            @RequestBody LinkedHashMap<String, String> filters,
             @PathVariable String group,
             @PathVariable(required = false) int page
     ){
+        /*сортировка
+        String sortProp = filters.get("sort");*/
         return productService.filterProducts(filters, group, PageRequest.of(page, 15, Sort.Direction.ASC, "pic"));
     }
 
