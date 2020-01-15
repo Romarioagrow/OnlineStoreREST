@@ -45,7 +45,6 @@
                     </v-row>
                 </v-container>
             </template>
-
             <v-divider></v-divider>
 
             <v-card-actions>
@@ -59,7 +58,6 @@
                                          indeterminate
                     ></v-progress-circular>
                 </div>
-
 
                 <!--ФИЛЬТРЫ-->
                 <v-expansion-panels v-else multiple focusable tile>
@@ -88,8 +86,7 @@
                                             type="string"
                                             style="width: 80px;"
                                             outlined dense
-                                    >
-                                    </v-text-field>
+                                    ></v-text-field>
                                 </template>
                                 <template v-slot:append>
                                     <v-text-field
@@ -99,8 +96,7 @@
                                             type="string"
                                             style="width: 80px;"
                                             outlined dense
-                                    >
-                                    </v-text-field>
+                                    ></v-text-field>
                                 </template>
                             </v-range-slider>
                         </v-expansion-panel-content>
@@ -123,9 +119,8 @@
                                                 v-model="selectedBrands"
                                                 :label="brand.firstBrand"
                                                 :value="brand.firstBrand"
-                                                height="2">
-
-                                        </v-checkbox>
+                                                height="2"
+                                        ></v-checkbox>
                                     </v-col>
                                     <v-col v-if="brand.secondBrand !== undefined" class="pt-0 pb-0">
                                         <v-checkbox
@@ -134,8 +129,8 @@
                                                 v-model="selectedBrands"
                                                 :label="brand.secondBrand"
                                                 :value="brand.secondBrand"
-                                                height="2">
-                                        </v-checkbox>
+                                                height="2"
+                                        ></v-checkbox>
                                     </v-col>
                                 </v-row>
                             </div>
@@ -143,50 +138,32 @@
                     </v-expansion-panel>
 
                     <!--Фильтры-параметры checkbox-->
-                    <v-expansion-panel v-for="[key, val] of filtersParams" :key="key">
-                        <v-expansion-panel-header ripple>
-                            {{ key.charAt(0).toUpperCase() + key.substr(1) }}
-                        </v-expansion-panel-header>
+                    <filter-params v-for="[paramKey, paramVal] of filtersParams"
+                                   :key="paramKey"
+                                   :paramKey="paramKey"
+                                   :paramVal="paramVal"
+                                   :selectedParams="selectedParams"
+                                   :filtersMap="filtersMap"
+                                   :filterProducts="filterProducts"
+                                   :checkFilterInCheckList="checkFilterInCheckList"
+                                   :toUpperCase="toUpperCase"
 
-                        <v-expansion-panel-content eager style="margin-top: 10px">
-                            <div v-for="(param, i) in val" :key="i" :brand="param">
-                                <v-checkbox
-                                        :disabled="checkFilterInCheckList(key + ': ' + param)"
-                                        color="#e52d00"
-                                        class="mt-2"
-                                        @change="filterProducts('param;' + key + ': ' + param)"
-                                        v-model="selectedParams"
-                                        :label="toUpperCase(param)"
-                                        :value="key +': '+ param"
-                                        height="2">
-                                </v-checkbox>
-                            </div>
-                        </v-expansion-panel-content>
-                    </v-expansion-panel>
-
+                    ></filter-params>
 
                     <!--Фильтры-диапазоны input-->
-                    <!--
-                    !!! ПРИ ПЕРЕТАСКИВАНИИ И ОТПУСКАНИИ ПОЛУЗНКА ЗНАЧЕНИЕ В ПОЛЕ ВОЗВРАЩАЕТСЯ К ДЕФОЛТНОМУ, НО В МОДЕЛЬ ПОПАДАЕТ УСТАНОВЛЕННОЕ
-                    !!! ПРИ ВВОДЕ ЗНАЧЕНИЯ ВРУЧНУЮ, ОНО СТАНОВИТСЯ МАКСИМАЛЬНЫМ/МИНИМАЛЬНЫМ ДЛЯ ПОЛЗУНКА, ФИЛЬТРАЦИЯ НЕ РАБОТАЕТ
-                    -->
-
                     <diapason-slider v-for="[diapasonKey, diapasonVal] of filtersDiapasons"
                                      :key="diapasonKey"
                                      :diapasonKey="diapasonKey"
                                      :diapasonVal="diapasonVal"
-                                     :filtersDiapasons="filtersDiapasons"
                                      :filtersMap="filtersMap"
                                      :filterProducts="filterProducts"
-                    >
-                    </diapason-slider>
+                    ></diapason-slider>
                 </v-expansion-panels>
             </v-card-actions>
         </v-navigation-drawer>
 
 
         <b-container fluid fill-height>
-
             <div v-if="!loadingProducts">
 
                 <!--Список фильтров-особенностей-->
@@ -235,8 +212,9 @@
     import axios from 'axios'
     import ProductCard from "components/products/ProductCard.vue";
     import DiapasonSlider from "components/products/DiapasonSlider.vue";
+    import FilterParams from "components/products/FilterParams.vue";
     export default {
-        components: {ProductCard, DiapasonSlider},
+        components: {ProductCard, DiapasonSlider, FilterParams},
         data() {
             return {
                 showFilters: true,
