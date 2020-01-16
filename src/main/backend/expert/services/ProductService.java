@@ -59,15 +59,11 @@ public class ProductService {
                     String annoVal = substringAfter(filter, ":").trim();
 
                     if (filterIsValid(annoKey, annoVal)) {
-                        log.info(annoKey + ": " + annoVal);
-
                         filtersMap.computeIfAbsent(annoKey, val -> new TreeSet<>()).add(annoVal);
                     }
                 }
             }
         });
-
-        filtersMap.forEach((s, strings) -> log.info(s + ": " + strings));
 
         filtersList.prices = collectPriceFilters(filtersList.prices, products);
 

@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <v-content>
         <v-container class="pt-0">
             <v-row>
                 <v-col class="pt-0">
@@ -95,7 +95,7 @@
 
                     <v-row>
                         <v-col>
-                            <v-card >
+                            <v-card>
                                 <v-row>
                                     <v-col cols="4">
                                         <v-card-title>{{ finalPrice.toLocaleString('ru-RU') }} ₽</v-card-title>
@@ -121,7 +121,7 @@
                 </v-col>
             </v-row>
         </v-container>
-    </div>
+    </v-content>
 </template>
 
 <script>

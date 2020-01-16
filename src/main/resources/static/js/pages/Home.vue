@@ -1,10 +1,7 @@
 <template>
-    <div>
+    <v-content>
         <v-progress-linear indeterminate color="#e52d00" v-if="false"></v-progress-linear>
         <b-container fluid class="flu">
-
-
-
             <v-card>
                 <v-carousel hide-delimiters cycle>
                     <v-carousel-item v-for="(image, i) in items" :key="image">
@@ -118,7 +115,7 @@
                 </v-card-actions>
             </v-card>
         </b-container>
-    </div>
+    </v-content>
 </template>
 
 <script>

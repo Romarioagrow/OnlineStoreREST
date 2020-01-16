@@ -1,7 +1,14 @@
 <template>
     <div>
-        <v-app-bar color="#f48337" dark :clipped-left="$vuetify.breakpoint.lgAndUp" app height="70" src="../../../img/navpic.png">
-
+        <v-app-bar
+                color="#f48337"
+                dark
+                :clipped-left="$vuetify.breakpoint.lgAndUp"
+                app
+                height="70"
+                src="../../../img/navpic.png"
+                flat
+        >
             <router-link to="/catalog">
                 <v-app-bar-nav-icon></v-app-bar-nav-icon>
             </router-link>

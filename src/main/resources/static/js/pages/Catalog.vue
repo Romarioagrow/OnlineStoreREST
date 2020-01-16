@@ -1,8 +1,9 @@
 <template>
-    <div>
+    <v-content>
         <v-progress-linear indeterminate color="#e52d00" v-if="loading"></v-progress-linear>
-        <b-container fluid class="flu">
-            <div v-if="!loading" class="indent">
+
+        <div v-if="!loading">
+            <v-toolbar tile class="indent">
                 <v-tabs
                         v-model="openWindow"
                         center-active
@@ -16,6 +17,9 @@
                         <v-icon>{{icons[index]}}</v-icon>
                     </v-tab>
                 </v-tabs>
+            </v-toolbar>
+
+            <b-container fluid class="flu indent mt-3">
                 <v-tabs-items v-model="openWindow">
                     <v-tab-item v-for="(value, key, index) of allCategories" :key="index" :value="`tab-${index}`">
                         <v-card flat>
@@ -27,10 +31,10 @@
                         </v-card>
                     </v-tab-item>
                 </v-tabs-items>
-            </div>
-        </b-container>
-        <!--<FooterDiv></FooterDiv>-->
-    </div>
+            </b-container>
+        </div>
+
+    </v-content>
 </template>
 
 <script>

@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <v-content>
         <v-progress-linear indeterminate color="#e52d00" v-if="loading"></v-progress-linear>
         <b-container fluid style="width: 90%;" v-else>
             <v-row>
@@ -311,7 +311,7 @@
                 </v-col>
             </v-row>
         </b-container>
-    </div>
+    </v-content>
 </template>
 
 <script>

@@ -1,5 +1,5 @@
 <template>
-    <div v-if="created">
+    <v-content v-if="created">
         <v-navigation-drawer absolute permanent>
             <template v-slot:prepend>
                 <v-list-item two-line>
@@ -67,7 +67,7 @@
 
             </v-container>
         </v-content>
-    </div>
+    </v-content>
 </template>
 
 <script>

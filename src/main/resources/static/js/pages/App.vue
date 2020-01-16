@@ -1,13 +1,9 @@
 <template>
     <v-app >
         <navbar></navbar>
-        <v-content class="bg">
-            <div @click="hideSearch()">
-                <router-view ></router-view>
-            </div>
-        </v-content>
-       <!-- <FooterDiv v-if="notProductsPage"></FooterDiv>-->
-        <!--<FooterDiv></FooterDiv>-->
+        <div @click="hideSearch()">
+            <router-view ></router-view>
+        </div>
     </v-app>
 </template>
 
@@ -49,7 +45,7 @@
 
 <style scoped>
     .bg{
-         background-color: #fafafa;
-     }
+        background-color: #fafafa;
+    }
 </style>
 

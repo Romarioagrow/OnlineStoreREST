@@ -1,30 +1,6 @@
 <template>
-    <b-container fluid style="width: 100%;">
-        <v-progress-linear indeterminate color="#e52d00" v-if="loadingProducts"></v-progress-linear>
-
-        <!--ПАНЕЛЬ НАВИГАЦИИ ПО КАТАЛОГУ-->
-        <v-toolbar flat v-if="!loadingFilters">
-            <v-toolbar-items style="padding-left: 8%">
-                <v-btn v-if="showFiltersButtonToolbar" small depressed outlined color="black" max-height="50%" style="margin-top: 15px" @click="returnFilters()">Открыть фильтры</v-btn>
-
-                <router-link to="/catalog">
-                    <v-btn depressed text small height="100%">
-                        Каталог
-                    </v-btn>
-                </router-link>
-
-                <router-link :to="'/catalog/'+linkCategory" >
-                    <v-btn depressed text small height="100%">
-                        {{linkCategory}}
-                    </v-btn>
-                </router-link>
-
-                <v-btn depressed disabled text small>{{linkProductGroup}}</v-btn>
-            </v-toolbar-items>
-        </v-toolbar>
-
-        <v-navigation-drawer app width="375" v-if="showFilters" :clipped="$vuetify.breakpoint.mdAndUp" style="margin-left: 70px">
-
+    <div>
+        <v-navigation-drawer app width="375" v-if="showFilters" :clipped="$vuetify.breakpoint.mdAndUp" style="margin-left: 50px">
             <!--НАЗВАНИЕ ГРУППЫ, КОЛИЧЕСТВО ТОВАРОВ-->
             <template v-slot:prepend>
                 <v-container>
@@ -46,9 +22,7 @@
                 </v-container>
             </template>
             <v-divider></v-divider>
-
             <v-card-actions>
-
                 <!--LOADER ФИЛЬТРОВ-->
                 <div v-if="loadingFilters">
                     <v-progress-circular style="margin-left: 150%"
@@ -58,16 +32,13 @@
                                          indeterminate
                     ></v-progress-circular>
                 </div>
-
                 <!--ФИЛЬТРЫ-->
                 <v-expansion-panels v-else multiple focusable tile>
-
                     <!--Фильтры-цены input-->
                     <v-expansion-panel>
                         <v-expansion-panel-header ripple>
                             Цены
                         </v-expansion-panel-header>
-
                         <v-expansion-panel-content>
                             <v-range-slider
                                     style="margin-top: 1.5rem;"
@@ -101,14 +72,12 @@
                             </v-range-slider>
                         </v-expansion-panel-content>
                     </v-expansion-panel>
-
                     <!--Фильтры-бренды checkbox-->
                     <!--ЕСЛИ НЕТ ФИЛЬТРОВ И ВЫБРАННО НЕСКОЛЬКО БРЕНДОВ, ТО ФИЛЬТРОВАТЬ КАК ИЛИ, И СРЕДИ ЭТИХ БРЕНДОВ ФИЛЬТРОВАТЬ МОДЕЛЬ В ГЛУБИНУ; ЕСЛИ БРЕНДЫ НЕ ВЫБРАНЫ, ТО ФИЛЬТРОВАТЬ В ГУЛБИНУ КАК ОБЫЧНО, И ДЛЯ БРЕНДОВ ТОЖЕ -->
                     <v-expansion-panel ripple >
                         <v-expansion-panel-header ripple>
                             Бренды
                         </v-expansion-panel-header>
-
                         <v-expansion-panel-content eager style="margin-top: 10px">
                             <div v-for="brand in twoColsBrands">
                                 <v-row>
@@ -136,7 +105,6 @@
                             </div>
                         </v-expansion-panel-content>
                     </v-expansion-panel>
-
                     <!--Фильтры-параметры checkbox-->
                     <filter-params v-for="[paramKey, paramVal] of filtersParams"
                                    :key="paramKey"
@@ -148,7 +116,6 @@
                                    :checkFilterInCheckList="checkFilterInCheckList"
                                    :toUpperCase="toUpperCase"
                     ></filter-params>
-
                     <!--Фильтры-диапазоны input-->
                     <diapason-slider v-for="[diapasonKey, diapasonVal] of filtersDiapasons"
                                      :key="diapasonKey"
@@ -161,49 +128,72 @@
             </v-card-actions>
         </v-navigation-drawer>
 
+        <v-content>
+            <v-progress-linear indeterminate color="#e52d00" v-if="loadingProducts"></v-progress-linear>
+            <div v-if="!loadingFilters">
+                <!--ПАНЕЛЬ НАВИГАЦИИ ПО КАТАЛОГУ-->
+                <v-toolbar flat>
+                    <v-toolbar-items style="padding-left: 5%">
+                        <v-btn v-if="showFiltersButtonToolbar" small depressed outlined color="black" max-height="50%" style="margin-top: 15px" @click="returnFilters()">Открыть фильтры</v-btn>
 
-        <b-container fluid fill-height>
-            <div v-if="!loadingProducts">
+                        <router-link to="/catalog">
+                            <v-btn depressed text small height="100%">
+                                Каталог
+                            </v-btn>
+                        </router-link>
 
+                        <router-link :to="'/catalog/'+linkCategory" >
+                            <v-btn depressed text small height="100%">
+                                {{linkCategory}}
+                            </v-btn>
+                        </router-link>
+
+                        <v-btn depressed disabled text small>{{linkProductGroup}}</v-btn>
+                    </v-toolbar-items>
+                </v-toolbar>
                 <!--Список фильтров-особенностей-->
-                <v-slide-group multiple show-arrows class="mt-5" style="margin-left: 5%">
-                    <v-slide-item v-for="feature in filtersFeats" :key="feature" v-slot:default="{ active, toggle }">
-                        <v-btn
-                                :disabled="checkFilterInCheckList(feature)"
-                                class="mx-2"
-                                style="background-color: #fafafa"
-                                :input-value="active"
-                                active-class="orange text"
-                                depressed
-                                rounded
-                                @click="toggle"
-                                @mouseup="filterProducts('feature;' + feature)"
-                        >
-                            {{ feature }}
-                        </v-btn>
-                    </v-slide-item>
-                </v-slide-group>
-
-                <!--СЕТКА ТОВАРОВ-->
-                <v-row style="margin-left: 5%">
-                    <product-card v-for="product in products" :key="product.productID" :product="product" :products="products"></product-card>
-                </v-row>
-
-                <!--ЗАГРУЗКА ПАРТИИ ТОВАРОВ-->
-                <v-row v-if="loadingMoreProducts">
-                    <v-col>
-                        <v-progress-circular
-                                :size="50"
-                                color="#e52d00"
-                                indeterminate
-                                style="margin-left: 50%; margin-top: 1%"
-                        ></v-progress-circular>
-                    </v-col>
-                </v-row>
-
+                <v-toolbar flat v-if="filtersFeats.length !== 0">
+                    <v-slide-group multiple show-arrows style="margin-left: 5%; width: 95%;">
+                        <v-slide-item v-for="feature in filtersFeats" :key="feature" v-slot:default="{ active, toggle }">
+                            <v-btn
+                                    :disabled="checkFilterInCheckList(feature)"
+                                    class="mx-2"
+                                    style="background-color: #fafafa"
+                                    :input-value="active"
+                                    active-class="orange text"
+                                    depressed
+                                    rounded
+                                    @click="toggle"
+                                    @mouseup="filterProducts('feature;' + feature)"
+                            >
+                                {{ feature }}
+                            </v-btn>
+                        </v-slide-item>
+                    </v-slide-group>
+                </v-toolbar>
             </div>
-        </b-container>
-    </b-container>
+
+            <b-container fluid fill-height>
+                <div v-if="!loadingProducts">
+                    <!--СЕТКА ТОВАРОВ-->
+                    <v-row style="margin-left: 5%">
+                        <product-card v-for="product in products" :key="product.productID" :product="product" :products="products"></product-card>
+                    </v-row>
+                    <!--ЗАГРУЗКА ПАРТИИ ТОВАРОВ-->
+                    <v-row v-if="loadingMoreProducts">
+                        <v-col>
+                            <v-progress-circular
+                                    :size="50"
+                                    color="#e52d00"
+                                    indeterminate
+                                    style="margin-left: 50%; margin-top: 1%"
+                            ></v-progress-circular>
+                        </v-col>
+                    </v-row>
+                </div>
+            </b-container>
+        </v-content>
+    </div>
 </template>
 
 

@@ -1,5 +1,5 @@
 <template>
-    <div v-if="userConfirmed">
+    <v-content v-if="userConfirmed">
         <v-navigation-drawer absolute permanent>
 
             <template v-slot:prepend>
@@ -174,7 +174,7 @@
                 </v-container>
             </v-container>
         </v-content>
-    </div>
+    </v-content>
 </template>
 
 <script>

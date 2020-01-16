@@ -1,5 +1,5 @@
 <template>
-    <div>
+    <v-content>
         <v-progress-linear indeterminate color="#e52d00" v-if="loading"></v-progress-linear>
         <v-container fluid>
             <v-row align="center" justify="center">
@@ -164,7 +164,7 @@
                 </v-col>
             </v-row>
         </v-container>
-    </div>
+    </v-content>
 </template>
 
 <script>
