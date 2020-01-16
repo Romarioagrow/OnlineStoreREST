@@ -147,7 +147,6 @@
                                    :filterProducts="filterProducts"
                                    :checkFilterInCheckList="checkFilterInCheckList"
                                    :toUpperCase="toUpperCase"
-
                     ></filter-params>
 
                     <!--Фильтры-диапазоны input-->
@@ -252,6 +251,9 @@
             }
         },
         methods: {
+            /*если в фильтрах нету фильтров кроме цены или бренда, то отображать все бренды
+            * если модель отфильтрована по особенностям, диапазонам или параметрам, то отображать только бренды в текущей модели, но в таком случае при выборе бренда не убирать остальные доступные бренды
+            * */
             checkFilterInCheckList(value) {
                 const val = value.toString().toLowerCase().trim()
                 return !this.filtersChecklist.includes(val)
@@ -265,23 +267,45 @@
             /*ФИЛЬТРАЦИЯ ТОВАРОВ*/
             filterProducts(filter) {
                 /*ЕСЛИ ФИЛЬТР ОДИН В ОКНЕ, ТО В ОСОБЕННОСТИ*/
-                /*  delete filter(filter) {
-                *       key = getKeyFilter
-                *       this.filtersMap.delete(key)
-                *   }
-                */
-
-                //console.log(filter)
                 this.filtersScrollPage = 0
+
+                console.log(filter)
 
                 /*Обработка неповторяющихся фильтров*/
                 if (!filter.startsWith('reset'))
                 {
-                    if (filter.startsWith('feature') || filter.startsWith('param') || filter.startsWith('brand')) {
+                    if (filter.startsWith('feature') || filter.startsWith('param')) {
                         if (!this.filtersMap.has(filter)) {
                             this.filtersMap.set(filter,'')
                         }
                         else this.filtersMap.delete(filter)
+                    }
+
+                    /// REFACTORING
+                    if (filter.startsWith('brand')) {
+                        let brandKey = 'brands'
+                        let brandVal = filter.substr(filter.indexOf(';') + 1)
+
+                        if (this.filtersMap.has(brandKey) && this.filtersMap.get(brandKey).includes(brandVal))
+                        {
+                            let removeBrand = this.filtersMap.get(brandKey).split(',')
+                            removeBrand.splice(removeBrand.indexOf(brandVal), 1);
+                            this.filtersMap.set(brandKey, removeBrand.toString())
+                            if (!this.filtersMap.get(brandKey)) {
+                                this.filtersMap.delete(brandKey)
+                            }
+                        }
+                        else
+                        {
+                            if (!this.filtersMap.has(brandKey)) {
+                                this.filtersMap.set(brandKey, brandVal)
+                            }
+                            else
+                            {
+                                let brands = this.filtersMap.get(brandKey) + ',' + brandVal
+                                this.filtersMap.set(brandKey, brands)
+                            }
+                        }
                     }
 
                     if (filter.startsWith('diapason')) {
@@ -298,7 +322,6 @@
                 }
 
                 const filtersPayload = this.payloadFilters(this.filtersMap)
-                console.log(this.filtersMap)
 
                 /*ОТПРАВИТЬ ЗАПРОС НА ФИЛЬТРАЦИЮ НА СЕРВЕР*/
                 const filterURL = '/api/products/filter' + this.requestGroup + '/' + this.filtersScrollPage
@@ -308,6 +331,7 @@
                     this.products = page.content
                     this.totalProductsFound = page.totalElements
                     this.filtersChecklist = filtersCheckList
+                    console.log(this.filtersChecklist)
                 })
             },
             hideFilters() {
@@ -355,24 +379,12 @@
                 let diapasons = response.data.diapasons
                 for (let [key, value] of Object.entries(diapasons)) {
                     this.filtersDiapasons.set(key, value.slice(", "))
-
-                    //this.diapasonValues.set(key, value.slice(", "))
-                    /*console.log(key)
-                    console.log(value)*/
-                    /// массив объектов
-                    /// карта объектов
-
-                    /*this.diapasonsObject[key] = {
-                        'min': value[0],
-                        'max': value[1],
-                        'range': value
-                    }*/
                 }
-                //console.log(this.diapasonsObject)
 
                 let params = response.data.params
-                for (const [key, value] of Object.entries(params)) this.filtersParams.set(key, value)
-
+                for (const [key, value] of Object.entries(params)) {
+                    this.filtersParams.set(key, value)
+                }
                 this.loadingFilters = false
             });
 
@@ -391,9 +403,8 @@
                 const el = document.documentElement
                 const isBottomOfScreen = el.scrollTop + window.innerHeight === el.offsetHeight
 
-                if(isBottomOfScreen) {
-                    console.log('bottomLoad')
-
+                if(isBottomOfScreen)
+                {
                     if (this.filtersMap.length === 0) {
                         if (this.products.length >=15 ) {
                             this.loadingMoreProducts = true
@@ -415,7 +426,6 @@
                             const filtersPayload = this.payloadFilters(this.filtersMap)
 
                             axios.post(filterURL, filtersPayload).then(response => {
-                                console.log(response.data[0].content)
                                 this.products = this.products.concat(response.data[0].content)
                                 this.loadingMoreProducts = false
                             })

@@ -92,8 +92,7 @@
         beforeCreate() {
             axios.get('/admin').then(() => {
                 this.created = true
-            }).catch(error =>
-            {
+            }).catch(error => {
                 if (error.response) {
                     console.log(error.response.status);
                     if (error.response.status === 403) {

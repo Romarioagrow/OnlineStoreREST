@@ -59,11 +59,15 @@ public class ProductService {
                     String annoVal = substringAfter(filter, ":").trim();
 
                     if (filterIsValid(annoKey, annoVal)) {
+                        log.info(annoKey + ": " + annoVal);
+
                         filtersMap.computeIfAbsent(annoKey, val -> new TreeSet<>()).add(annoVal);
                     }
                 }
             }
         });
+
+        filtersMap.forEach((s, strings) -> log.info(s + ": " + strings));
 
         filtersList.prices = collectPriceFilters(filtersList.prices, products);
 
@@ -75,10 +79,6 @@ public class ProductService {
 
         filtersList.diapasons = collectDiapasonFilters(filtersList.diapasons, filtersMap);
 
-        /*System.out.println();
-        System.out.println();
-        System.out.println();
-        filtersList.showInfo();*/
         return filtersList;
     }
 
@@ -94,11 +94,14 @@ public class ProductService {
 
         List<Product> products = productRepo.findByProductGroupIgnoreCase(group);
 
+        /*Отфильтровать products по выбраным фильтрам*/
         for (Map.Entry<String, String> filterPair : filters.entrySet()) {
             products = filteringProducts(products, filterPair);
         }
 
+        /*Создать список доступных фильтров для текущей модели фильтрации*/
         String filterCheckList = createComputedFilterChecklist(products);
+
         return productsPage(products, pageable, filterCheckList);
     }
 
@@ -107,12 +110,9 @@ public class ProductService {
         String filterKey = substringBefore(filtersPair.getKey(), ";");
         String filterVal = extractFilterValue(filtersPair);
 
-        log.info(filterKey);
-        log.info(filterVal);
-
         switch (filterKey) {
             case "price": return filterProductsByPrice(products, filterVal);
-            case "brand": return filterProductsByBrands(products, filterVal);
+            case "brands": return filterProductsByBrands(products, filterVal);
             case "param": return filterProductsByParams(products, filterVal);
             case "feature": return filterProductsByFeature(products, filterVal);
             case "diapason": return filterProductsByDiapasons(products, filterVal);
@@ -124,11 +124,11 @@ public class ProductService {
         String filterKey = filtersPair.getKey();
         String filterVal = filtersPair.getValue();
 
-        if (filterKey.startsWith("price")) {
+        if (filterKey.startsWith("price") || filterKey.startsWith("brands")) {
             return filterVal;
         }
 
-        if (filterKey.startsWith("feature") || filterKey.startsWith("param") || filterKey.startsWith("brand")) {
+        if (filterKey.startsWith("feature") || filterKey.startsWith("param")) {
             return substringAfter(filterKey, ";");
         }
 
@@ -139,13 +139,10 @@ public class ProductService {
     }
 
     private List<Product> filterProductsByFeature(List<Product> products, String filterName) {
-        final String filter1 = filterName.toLowerCase().concat(": да");
-        final String filter2 = filterName.toLowerCase().concat(": есть");
-
         return products.stream().filter(product ->
         {
             String annotation = product.getShortAnnotation().toLowerCase();
-            return annotation.contains(filter1) || annotation.contains(filter2);
+            return containsIgnoreCase(annotation, filterName);
         }).collect(Collectors.toList());
     }
 
@@ -154,7 +151,8 @@ public class ProductService {
     }
 
     private List<Product> filterProductsByBrands(List<Product> products, String filterName) {
-        return products.stream().filter(product -> containsIgnoreCase(product.getBrand(), filterName)).collect(Collectors.toList());
+
+        return products.stream().filter(product -> containsIgnoreCase(filterName, product.getBrand())).collect(Collectors.toList());
     }
 
     private List<Product> filterProductsByPrice(List<Product> products, String filterName) {
@@ -232,6 +230,34 @@ public class ProductService {
         return products;
     }
 
+    private String getAvailableFiltersChecklist(List<Product> products) {
+        Set<String> checklist = new HashSet<>();
+        Set<String> brands = new HashSet<>();
+        products.forEach(product ->
+        {
+            if (product.getSupplier().equals("RBT") || product.getAnnotationParsed() != null)
+            {
+                checklist.add(StringUtils.capitalize(product.getBrand().toLowerCase()));
+                List<String> anno = Arrays.asList(product.getShortAnnotation().split(";"));
+                checklist.addAll(anno);
+            }
+            brands.add(product.getBrand().toLowerCase());
+            checklist.addAll(brands);
+
+            /*ДОБАВИТЬ НЕОТФОРМАТИРОВАНЫЕ ФИЛЬТРЫ RUSBT ИЗ OriginalAnnotation*/
+        });
+        return checklist.toString().toLowerCase();
+    }
+
+    public String createDefaultFilterChecklist(String group) {
+        List<Product> products = productRepo.findProductsByProductGroupIgnoreCase(group);
+        return getAvailableFiltersChecklist(products);
+    }
+
+    private String createComputedFilterChecklist(List<Product> products) {
+        return getAvailableFiltersChecklist(products);
+    }
+
     private Map<String, TreeSet<Double>> collectDiapasonFilters(Map<String, TreeSet<Double>> diapasons, Map<String, TreeSet<String>> filtersMap) {
         /*!!! Если последнее значение меньше 10, то в параметры*/
         /*ЕСЛИ ФИЛЬТР ОДИН В ОКНЕ, ТО В ОСОБЕННОСТИ*/
@@ -271,7 +297,6 @@ public class ProductService {
     private Set<String> collectFeatureFilters(Set<String> features, Map<String, TreeSet<String>> filtersMap) {
         filtersMap.forEach((key, setVals) -> {
             if (!paramVals(setVals) && filterIsNotSynonym(key)) {
-
                 features.add(key);
             }
         });
@@ -316,7 +341,9 @@ public class ProductService {
     }
 
     private Set<String> collectBrandFilters(Set<String> brands, List<Product> products) {
-        products.forEach(product -> brands.add(StringUtils.capitalize(product.getBrand().toLowerCase())));
+        products.stream()
+                .filter(product -> !product.getBrand().isEmpty())
+                .forEach(product -> brands.add(StringUtils.capitalize(product.getBrand().toLowerCase())));
         return brands;
     }
 
@@ -343,19 +370,21 @@ public class ProductService {
         return new ArrayList<>();
     }
 
+    /*REFACTORING!!!*/
     private boolean filterIsValid(String annoKey, String annoVal) {
+        boolean noEmpty = !annoVal.isEmpty();
         boolean noDash = !annoVal.equals("-");
         boolean noZero = !annoVal.equals("0");
         boolean noNegative = !annoVal.equalsIgnoreCase("нет");
 
-        boolean correctKey = !annoKey.equalsIgnoreCase("PRESTIGIO PTV32SS04Z")
-                && !annoKey.equalsIgnoreCase("Название")
+        boolean correctKey =
+                !annoKey.equalsIgnoreCase("Название")
                 && !annoKey.equalsIgnoreCase("Модель")
                 && !annoKey.startsWith("количество шт в")
                 && !annoKey.equalsIgnoreCase("Количество камер")
                 && !annoKey.equals("Бренд");
 
-        return correctKey && noDash && noZero && noNegative;
+        return correctKey && noDash && noZero && noNegative && noEmpty;
     }
 
     private boolean isDiapasonVals(List<String> checkingVals) {
@@ -369,23 +398,6 @@ public class ProductService {
             }
         }
         return false;
-    }
-
-    private String getChecklist(List<Product> products) {
-        Set<String> checklist = new HashSet<>();
-
-        products.forEach(product -> {
-            checklist.add(StringUtils.capitalize(product.getBrand().toLowerCase()));
-
-            String[] shortAnno = product.getShortAnnotation().split(";");
-            checklist.addAll(Arrays.asList(shortAnno));
-        });
-        return checklist.toString().toLowerCase();
-    }
-
-    public String createDefaultFilterChecklist(String group) {
-        List<Product> products = productRepo.findProductsByProductGroupIgnoreCase(group);
-        return getChecklist(products);
     }
 
     public Page<Product> getProductsByGroup(String group, Pageable pageable) {
@@ -426,10 +438,6 @@ public class ProductService {
     public List<Product> deletePopularProduct(String productID) {
         popularRepo.delete(new Popular(productID));
         return getPopularProducts();
-    }
-
-    private String createComputedFilterChecklist(List<Product> products) {
-        return getChecklist(products);
     }
 
     public Product getProductByID(String productID) {

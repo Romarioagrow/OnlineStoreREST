@@ -218,6 +218,13 @@ public class OrderService {
         return orders;
     }
 
+    public List<Order> deleteCompletedOrder(Long orderID) {
+        orderRepo.delete(orderRepo.findByOrderID(orderID));
+        List<Order> orders = orderRepo.findAllByCompletedTrue();
+        orders.sort(Comparator.comparing(Order::getOpenDate).reversed());
+        return orders;
+    }
+
     public List<Order> getAllAcceptedOrders() {
         List<Order> acceptedOrders = orderRepo.findAllByAcceptedTrueAndCompletedFalse();
         acceptedOrders.sort(Comparator.comparing(Order::getOpenDate).reversed());
@@ -252,5 +259,20 @@ public class OrderService {
             e.getSuppressed();
         }
         return null;
+    }
+
+    public List<Order> cancelCompletedOrder(Long orderID) {
+        Order order = orderRepo.findByOrderID(orderID);
+        order.setCompleted(false);
+        order.setConfirmed(false);
+
+        User user = order.getUser();
+        if (user != null) {
+            user.setBonus(user.getBonus() - order.getTotalBonus());
+            userRepo.save(user);
+        }
+
+        orderRepo.save(order);
+        return getAllCompletedOrders();
     }
 }

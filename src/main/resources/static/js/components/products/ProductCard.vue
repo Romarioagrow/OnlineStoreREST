@@ -42,7 +42,9 @@
             <v-card-text >
                 <ul class="pl-1">
                     <li v-for="anno in annotations" v-if="anno" style="list-style-type: none;" >
-                        <span class="font-weight-light">{{anno}}</span>
+                        <span class="font-weight-light">
+                            {{anno}}
+                        </span>
                     </li>
                 </ul>
             </v-card-text>

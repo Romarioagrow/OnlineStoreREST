@@ -1,13 +1,12 @@
 <template>
     <div>
         <v-container class="pt-0">
-
             <v-row>
                 <v-col class="pt-0">
-                    <v-toolbar flat v-if="!loading">
+                    <v-toolbar flat>
                         <v-toolbar-items>
 
-                            <router-link :to="'/catalog/'+product.productCategory">
+                            <router-link :to="'/catalog/' + product.productCategory">
                                 <v-btn depressed text small height="100%">
                                     Каталог
                                 </v-btn>
@@ -28,9 +27,6 @@
                             <v-btn depressed text small disabled height="100%">
                                 {{product.productGroup}} {{product.brand}}
                             </v-btn>
-
-
-                            <v-btn depressed disabled text small>{{linkProductGroup}}</v-btn>
                         </v-toolbar-items>
                     </v-toolbar>
                 </v-col>
@@ -39,27 +35,16 @@
             <v-row>
                 <v-col>
                     <b-card>
-                        <b-card-body v-if="product.hasFormattedAnno">
-                            <v-row v-for="(value, param) of annotationOrig" :key="param">
+                        <!--АННОТАЦИЯ-->
+                        <b-card-body>
+                            <v-row v-for="[annoKey, annoVal] of this.annotation" :key="annoKey">
                                 <v-col cols="7">
-                                    {{param}}
-                                    <hr style="width: 180%;">
+                                    {{annoKey}}
                                 </v-col>
                                 <v-col align="right">
-                                    <strong>{{value}}</strong>
+                                    <strong>{{annoVal}}</strong>
                                 </v-col>
-                            </v-row>
-                        </b-card-body>
-
-                        <b-card-body v-else>
-                            <v-row v-for="(value, param) of formattedAnno" :key="param">
-                                <v-col cols="7">
-                                    {{param}}
-                                    <hr style="width: 180%;">
-                                </v-col>
-                                <v-col align="right">
-                                    <strong>{{value}}</strong>
-                                </v-col>
+                                <hr style="width: 180%;">
                             </v-row>
                         </b-card-body>
                     </b-card>
@@ -81,7 +66,6 @@
                             <a @mouseover="this.style.cursor='pointer'">
                                 <v-img class="white--text" contain eager max-height="300" :src="product.pic" alt="Bad Link" @click.stop="picDialog = true"></v-img>
                             </a>
-
                             <v-dialog v-model="picDialog" max-width="80%">
                                 <v-card>
                                     <v-img class="white--text" height="1000" contain eager :src="product.pic" alt="Bad Link" @click.stop="picDialog = true"></v-img>
@@ -94,13 +78,11 @@
                             <a @mouseover="this.style.cursor='pointer'">
                                 <v-img class="white--text" contain max-height="300" :src="mainPhoto" alt="Bad Link" @click.stop="picDialog = true"></v-img>
                             </a>
-
                             <v-dialog v-model="picDialog" max-width="80%">
                                 <v-card>
                                     <v-img class="white--text" height="1000" contain :src="mainPhoto" alt="Bad Link" @click.stop="picDialog = true"></v-img>
                                 </v-card>
                             </v-dialog>
-
                             <v-card-actions >
                                 <v-tabs height="100" center-active show-arrows :centered="true" slider-color="#e52d00" background-color="#ffffff">
                                     <v-tab v-for="(pic, index) of fewPics" :key="pic">
@@ -116,7 +98,7 @@
                             <v-card >
                                 <v-row>
                                     <v-col cols="4">
-                                        <v-card-title>{{ product.finalPrice.toLocaleString('ru-RU') }} ₽</v-card-title>
+                                        <v-card-title>{{ finalPrice.toLocaleString('ru-RU') }} ₽</v-card-title>
                                     </v-col>
                                     <v-col class="mr-5">
                                         <v-card-text>За покупку будет зачисленно <strong>{{ product.bonus }} </strong> баллов!</v-card-text>
@@ -144,60 +126,40 @@
 
 <script>
     import axios from 'axios'
-    /*REFACTORING NEEDED!*/
     export default {
         data() {
             return {
                 product: '',
                 linkBack: '',
-                anno: [],
-                annoOrig: [],
+                annotation: new Map(),
                 picDialog: false,
-                formattedAnno:{},
-                annotationOrig: {},
                 fewPics: [],
-                mainPhoto: ''
+                mainPhoto: '',
+                finalPrice: ''
             }
         },
         beforeCreate() {
-            /*REFACTORING NEEDED!*/
-            /*РАЗДЕЛИТЬ НА МЕТОДЫ!*/
-
             const productID = (decodeURI(window.location.href).substr(decodeURI(window.location.href).lastIndexOf('/')+1));
             let url = '/api/products/show/' + productID;
 
             axios.get(url).then(response => {
                 this.product = response.data
-                this.anno =  (this.product.shortAnnotation.split(';').map(String)).filter(Boolean)
-                this.annoOrig = this.anno =  (this.product.annotation.split(';').map(String)).filter(Boolean)
-
                 this.linkBack = '/products/'+ (this.product.productGroup).toLowerCase();
+                this.finalPrice = this.product.finalPrice
 
-                this.anno.forEach(value => {
-                    if (value.includes(':')) {
-                        let key = value.substr(0, value.indexOf(':'))
-                        let val = value.substr(value.indexOf(':') + 1).trim()
-                        this.formattedAnno[key] = val
-                    }
-                    else {
-                        this.formattedAnno[value] = ''
-                    }
-                })
+                this.product.shortAnnotation
+                    .split(';')
+                    .filter(anno => anno)
+                    .forEach(anno => {
+                        let annoKey = anno.includes(':') ? anno.substr(0, anno.indexOf(':')) : anno
+                        let annoVal = anno.includes(':') ? anno.substr(anno.indexOf(':') + 1) : ''
+                        this.annotation.set(annoKey, annoVal)
+                    })
 
-                this.annoOrig.forEach(value => {
-                    if (value.includes(':')) {
-                        let key = value.substr(0, value.indexOf(':'))
-                        let val = value.substr(value.indexOf(':') + 1).trim()
-                        this.annotationOrig[key] = val
-                    }
-                    else {
-                        this.annotationOrig[value] = ''
-                    }
-                })
-
-                this.fewPics = this.product.pics.split(';').filter(pic => pic)
                 this.mainPhoto = this.fewPics[0]
-                console.log(this.fewPics)
+                if (this.product.pics) {
+                    this.fewPics = this.product.pics.split(';').filter(pic => pic)
+                }
             });
         },
         methods: {
@@ -221,5 +183,4 @@
     }
 </script>
 
-<style scoped></style>
 

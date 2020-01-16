@@ -49,132 +49,128 @@
         <v-content>
             <v-container fluid fill-height>
                 <v-container v-if="activeContainerCurrent">
-                    <v-layout justify-center align-center>
+                    <v-subheader>
+                        <h3>Принятые заказы</h3>
+                    </v-subheader>
 
-                        <v-list subheader width="100%" style="background-color: #f2f2f2;">
-                            <v-subheader style="background-color: #fafafa;">
-                                <h3>Принятые заказы</h3>
-                            </v-subheader>
+                    <v-row v-for="order of acceptedOrders" :key="order.orderID">
+                        <v-card outlined width="100%" class="mb-6">
+                            <v-row>
+                                <v-col cols="7">
+                                    <v-card-title>
+                                        Заказ №{{order.orderID}} от {{order.openDate.replace('T',' ')}}
+                                    </v-card-title>
+                                </v-col>
 
-                            <v-list-item-content v-for="order of acceptedOrders" :key="order.orderID" style="background-color: #fafafa;">
-                                <v-card outlined width="100%" class="mb-6">
-                                    <v-row>
-                                        <v-col cols="7">
-                                            <v-card-title>
-                                                Заказ №{{order.orderID}} от {{order.openDate.replace('T',' ')}}
-                                            </v-card-title>
-                                        </v-col>
+                                <v-col>
+                                    <v-card-title>
+                                        Статус заказа: <div class="ml-3"><span v-if="!order.confirmed" style="color: #5181b8">В обработке</span><span v-else style="color:#5fb053;">Подтвержден</span></div>
+                                    </v-card-title>
+                                </v-col>
+                            </v-row>
 
-                                        <v-col>
-                                            <v-card-title>
-                                                Статус заказа: <div class="ml-3"><span v-if="!order.confirmed" style="color: #5181b8">В обработке</span><span v-else style="color:#5fb053;">Подтвержден</span></div>
-                                            </v-card-title>
-                                        </v-col>
-                                    </v-row>
+                            <v-card-text class="pt-0 pb-0">
+                                <div class="my-4 subtitle-1 black--text" v-if="order.discountPrice === null">
+                                    Сумма заказа: <strong>{{order.totalPrice.toLocaleString('ru-RU')}} ₽</strong>
+                                </div>
+                                <div class="my-4 subtitle-1 black--text" v-else>
+                                    Сумма заказа: <strong>{{order.discountPrice.toLocaleString('ru-RU')}} ₽ <span>с учетом скидки</span></strong>
+                                </div>
+                            </v-card-text>
 
-                                    <v-card-text class="pt-0 pb-0">
-                                        <div class="my-4 subtitle-1 black--text" v-if="order.discountPrice === null">
-                                            Сумма заказа: <strong>{{order.totalPrice.toLocaleString('ru-RU')}} ₽</strong>
-                                        </div>
-                                        <div class="my-4 subtitle-1 black--text" v-else>
-                                            Сумма заказа: <strong>{{order.discountPrice.toLocaleString('ru-RU')}} ₽</strong>
-                                        </div>
-                                    </v-card-text>
+                            <v-card-text class="pt-0 pb-0">
+                                <div class="my-4 subtitle-1 black--text" v-if="order.user !== null">
+                                    Бонусов за заказ: <strong>{{order.totalBonus}}</strong>
+                                </div>
+                            </v-card-text>
 
-                                    <v-card-text class="pt-0 pb-0">
-                                        <div class="my-4 subtitle-1 black--text" v-if="order.user !== null">
-                                            Бонусов за заказ: <strong>{{order.totalBonus}}</strong>
-                                        </div>
-                                    </v-card-text>
+                            <v-divider></v-divider>
 
-                                    <v-divider></v-divider>
+                            <v-subheader>Заказанные товары</v-subheader>
+                            <div v-for="product in order.orderedList" :key="product.productID">
+                                <v-row class="ml-2">
+                                    <v-col cols="1">
+                                        <v-img :src="product.pic" height="50" contain></v-img>
+                                    </v-col>
 
-                                    <v-subheader>Заказанные товары</v-subheader>
-                                    <div v-for="product in order.orderedList" :key="product.productID">
-                                        <v-row class="ml-2">
-                                            <v-col cols="1">
-                                                <v-img :src="product.pic" height="50" contain></v-img>
-                                            </v-col>
+                                    <v-col cols="7" style="padding-top: 25px;">
+                                        <router-link :to="'/products/product/'+product.productID" style="color: black"><span v-text="product.productName"></span></router-link>
+                                    </v-col>
 
-                                            <v-col cols="7" style="padding-top: 25px;">
-                                                <router-link :to="'/products/product/'+product.productID" style="color: black"><span v-text="product.productName"></span></router-link>
-                                            </v-col>
+                                    <v-col cols="2" style="padding-top: 25px;">
+                                        <span><strong>{{(product.productPrice * product.productAmount).toLocaleString('ru-RU')}}</strong> ₽</span>
+                                    </v-col>
 
-                                            <v-col cols="2" style="padding-top: 25px;">
-                                                <span><strong>{{(product.productPrice * product.productAmount).toLocaleString('ru-RU')}}</strong> ₽</span>
-                                            </v-col>
-
-                                            <v-col cols="2" style="padding-top: 25px;">
-                                                <span>за <strong>{{product.productAmount}} шт.</strong></span>
-                                            </v-col>
-                                        </v-row>
-                                    </div>
-                                </v-card>
-                            </v-list-item-content>
-                        </v-list>
-                    </v-layout>
+                                    <v-col cols="2" style="padding-top: 25px;">
+                                        <span>за <strong>{{product.productAmount}} шт.</strong></span>
+                                    </v-col>
+                                </v-row>
+                            </div>
+                        </v-card>
+                    </v-row>
                 </v-container>
 
                 <v-container v-if="activeContainerCompleted">
-                    <v-layout justify-center align-center>
-                        <v-list subheader width="100%" style="background-color: #f2f2f2;">
-                            <v-subheader style="background-color: #fafafa;">
-                                <h3>Завершенные заказы</h3>
+
+                    <v-subheader style="background-color: #fafafa;">
+                        <h3>Завершенные заказы</h3>
+                    </v-subheader>
+
+                    <v-row v-for="order of completedOrders" :key="order.orderID" style="background-color: #fafafa;">
+                        <v-card outlined width="100%" class="mb-6">
+
+                            <v-card-title>
+                                <v-row>
+                                    <v-col cols="2">
+                                        Заказ №{{order.orderID}}
+                                    </v-col>
+                                    <v-col>
+                                        от {{order.openDate.replace('T',' ')}}
+                                    </v-col>
+                                </v-row>
+                            </v-card-title>
+
+                            <v-card-text class="pt-0 pb-0">
+                                <div class="my-4 subtitle-1 black--text" v-if="order.discountPrice === null">
+                                    Сумма заказа: <strong>{{order.totalPrice.toLocaleString('ru-RU')}} ₽</strong>
+                                </div>
+                                <div class="my-4 subtitle-1 black--text" v-else>
+                                    Сумма заказа: <strong>{{order.discountPrice.toLocaleString('ru-RU')}} ₽ <span>с учетом скидки</span></strong>
+                                </div>
+                            </v-card-text>
+
+                            <v-card-text class="pt-0 pb-0">
+                                <div class="my-4 subtitle-1 black--text">
+                                    Зачисленно бонусов: <strong>{{order.totalBonus}}</strong>
+                                </div>
+                            </v-card-text>
+
+                            <v-divider></v-divider>
+
+                            <v-subheader>
+                                Заказанные товары
                             </v-subheader>
+                            <div v-for="product in order.orderedList" :key="product.productID">
+                                <v-row class="ml-2">
+                                    <v-col cols="1">
+                                        <v-img :src="product.pic" height="50" contain></v-img>
+                                    </v-col>
 
-                            <v-list-item v-for="order of completedOrders" :key="order.orderID" style="background-color: #fafafa;">
-                                <v-card outlined width="100%" class="mb-6">
+                                    <v-col cols="7" style="padding-top: 25px;">
+                                        <router-link :to="'/products/product/'+product.productID" style="color: black"><span v-text="product.productName"></span></router-link>
+                                    </v-col>
 
-                                    <v-card-title>
-                                        <v-row>
-                                            <v-col cols="2">
-                                                Заказ №{{order.orderID}}
-                                            </v-col>
-                                            <v-col>
-                                                от {{order.openDate.replace('T',' ')}}
-                                            </v-col>
-                                        </v-row>
-                                    </v-card-title>
+                                    <v-col cols="2" style="padding-top: 25px;">
+                                        <span><strong>{{(product.productPrice * product.productAmount).toLocaleString('ru-RU')}}</strong> ₽</span>
+                                    </v-col>
 
-                                    <v-card-text class="pt-0 pb-0">
-                                        <div class="my-4 subtitle-1 black--text">
-                                            Сумма заказа: <strong>{{order.totalPrice.toLocaleString('ru-RU')}} ₽</strong>
-                                        </div>
-                                    </v-card-text>
-
-                                    <v-card-text class="pt-0 pb-0">
-                                        <div class="my-4 subtitle-1 black--text">
-                                            Зачисленно бонусов: <strong>{{order.totalBonus}}</strong>
-                                        </div>
-                                    </v-card-text>
-
-                                    <v-divider></v-divider>
-
-
-                                    <v-subheader>Заказанные товары</v-subheader>
-                                    <div v-for="product in order.orderedList" :key="product.productID">
-                                        <v-row class="ml-2">
-                                            <v-col cols="1">
-                                                <v-img :src="product.pic" height="50" contain></v-img>
-                                            </v-col>
-
-                                            <v-col cols="7" style="padding-top: 25px;">
-                                                <router-link :to="'/products/product/'+product.productID" style="color: black"><span v-text="product.productName"></span></router-link>
-                                            </v-col>
-
-                                            <v-col cols="2" style="padding-top: 25px;">
-                                                <span><strong>{{(product.productPrice * product.productAmount).toLocaleString('ru-RU')}}</strong> ₽</span>
-                                            </v-col>
-
-                                            <v-col cols="2" style="padding-top: 25px;">
-                                                <span>за <strong>{{product.productAmount}} шт.</strong></span>
-                                            </v-col>
-                                        </v-row>
-                                    </div>
-                                </v-card>
-                            </v-list-item>
-                        </v-list>
-                    </v-layout>
+                                    <v-col cols="2" style="padding-top: 25px;">
+                                        <span>за <strong>{{product.productAmount}} шт.</strong></span>
+                                    </v-col>
+                                </v-row>
+                            </div>
+                        </v-card>
+                    </v-row>
                 </v-container>
             </v-container>
         </v-content>

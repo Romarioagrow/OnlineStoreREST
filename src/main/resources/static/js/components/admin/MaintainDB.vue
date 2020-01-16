@@ -88,19 +88,6 @@
                         <v-btn v-if="!updatingBrands" color="success" v-on:click="uploadBrandsPrice()">Загрузить</v-btn>
                         <v-progress-circular v-else indeterminate color="primary"></v-progress-circular>
                     </v-card-actions>
-
-                    <!--<v-card-actions class="ml-5">
-                        <form enctype="multipart/form-data">
-                            <v-row class="mb-3"><input type="file" name="fileBrands"
-                                                       v-on:change="brandsFileChange($event.target.files)"/></v-row>
-                            <v-row v-if="!updatingBrands">
-                                <v-btn color="success" v-on:click="uploadBrandsPrice()">Загрузить бренд-прайс</v-btn>
-                            </v-row>
-                            <v-row v-else>
-                                <v-progress-circular indeterminate color="primary"></v-progress-circular>
-                            </v-row>
-                        </form>
-                    </v-card-actions>-->
                 </v-card>
             </v-col>
         </v-row>
@@ -147,37 +134,34 @@
             fileChange(fileList) {
                 this.file.append("file", fileList[0], fileList[0].name);
             },
-
             uploadExcelFile() {
-
-                console.log(this.files)
                 let formData = new FormData();
 
                 for( var i = 0; i < this.files.length; i++ ){
                     const file = this.files[i]
                     formData.append('file[' + i + ']', file)
                 }
-
                 axios.post('admin/updateDB', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
                     }
-                }).then(() => {
+                }).then((response) => {
+                    console.log('Total products: ' + response)
+
                     this.updatingDB = false
                     this.files = []
+
+                    axios.post('admin/parseRUSBT').then((response) => {
+                        console.log(response.data)
+                    });
+
                 });
-
             },
-
             brandsFileChange(fileList) {
                 this.fileBrands.append("fileBrands", fileList[0], fileList[0].name);
             },
             uploadBrandsPrice() {
-
-
                 this.updatingBrands = true
-
-                console.log(this.brandFiles)
                 let formData = new FormData();
 
                 for( var i = 0; i < this.brandFiles.length; i++ ){
@@ -193,15 +177,6 @@
                     this.updatingBrands = false
                     this.brandFiles = []
                 });
-
-
-                /*axios.post('admin/uploadFileBrands', this.fileBrands).then(() => {
-                    this.updatingBrands = false
-                    this.fileBrands = new FormData()
-                });*/
-
-
-
             },
             parsRUSBTPics() {
                 axios.post('admin/parsePicsRUSBT').then(console.log('pics parsed'));

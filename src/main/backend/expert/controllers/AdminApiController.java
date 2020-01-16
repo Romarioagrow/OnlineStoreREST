@@ -8,6 +8,9 @@ import expert.services.ProductBuilder;
 import expert.services.ProductService;
 import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
+import org.aspectj.weaver.ast.Or;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -27,17 +30,47 @@ public class AdminApiController {
     private final OrderService orderService;
     private final ProductService productService;
 
+    @GetMapping
+    private ResponseEntity<?> isAdmin(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            return new ResponseEntity<>(null, HttpStatus.UNAUTHORIZED);
+        }
+        if (user.isAdmin()) {
+            return new ResponseEntity<>("OK", HttpStatus.OK);
+        }
+        return new ResponseEntity<>(null, HttpStatus.FORBIDDEN);
+    }
+
     @PostMapping("/updateDB")
-    private void updateDB(
+    private int updateDB(
             @RequestParam("file[0]") MultipartFile file1,
             @RequestParam("file[1]") MultipartFile file2
     ){
         ArrayList<MultipartFile> supplierCatalogs = new ArrayList<>();
         supplierCatalogs.add(file1);
         supplierCatalogs.add(file2);
-        productBuilder.updateProductsDB(supplierCatalogs);
+        return productBuilder.updateProductsDB(supplierCatalogs);
     }
 
+    @PostMapping("/uploadFileBrands")
+    private void uploadBrandsPrice(
+            @RequestParam("file[0]") MultipartFile file1,
+            @RequestParam(value ="file[1]", required = false) MultipartFile file2,
+            @RequestParam(value ="file[2]", required = false) MultipartFile file3,
+            @RequestParam(value ="file[3]", required = false) MultipartFile file4
+    ) {
+        ArrayList<MultipartFile> brandsCatalogs = new ArrayList<>();
+        brandsCatalogs.add(file1);
+        brandsCatalogs.add(file2);
+        brandsCatalogs.add(file3);
+        brandsCatalogs.add(file4);
+        productBuilder.updateBrandsPrice(brandsCatalogs);
+    }
+
+    @PostMapping("/parseRUSBT")
+    private Map<String, Integer> parseRUSBT() {
+        return productBuilder.parseRUSBTParams();
+    }
 
     @PostMapping("/restoreDefaultPrice")
     private Product restoreDefaultPrice(@RequestBody String productID) {
@@ -60,6 +93,11 @@ public class AdminApiController {
         return orderService.deleteOrder(Long.parseLong(orderID));
     }
 
+    @PostMapping("/deleteCompletedOrder")
+    private List<Order> deleteCompletedOrder(@RequestBody String orderID) {
+        return orderService.deleteCompletedOrder(Long.parseLong(orderID));
+    }
+
     @PostMapping("/completeOrder")
     private boolean completeOrder(@RequestBody String orderID) {
         return orderService.completeOrder(Long.parseLong(orderID));
@@ -75,6 +113,11 @@ public class AdminApiController {
         return orderService.cancelConfirmOrder(Long.parseLong(orderID));
     }
 
+    @PostMapping("/cancelCompletedOrder")
+    private List<Order> cancelCompletedOrder(@RequestBody Long orderID) {
+        return orderService.cancelCompletedOrder(orderID);
+    }
+
     @GetMapping("/acceptedOrders")
     private List<Order> getAllAcceptedOrders() {
         return orderService.getAllAcceptedOrders();
@@ -83,27 +126,6 @@ public class AdminApiController {
     @GetMapping("/completedOrders")
     private List<Order> getAllCompletedOrders() {
         return orderService.getAllCompletedOrders();
-    }
-
-    @GetMapping
-    private boolean isAdmin(@AuthenticationPrincipal User user) {
-        if (user == null) return false;
-        return user.isAdmin();
-    }
-
-    @PostMapping("/uploadFileBrands")
-    private void uploadBrandsPrice(
-            @RequestParam("file[0]") MultipartFile file1,
-            @RequestParam("file[1]") MultipartFile file2,
-            @RequestParam("file[2]") MultipartFile file3,
-            @RequestParam("file[3]") MultipartFile file4
-    ) {
-        ArrayList<MultipartFile> brandsCatalogs = new ArrayList<>();
-        brandsCatalogs.add(file1);
-        brandsCatalogs.add(file2);
-        brandsCatalogs.add(file3);
-        brandsCatalogs.add(file4);
-        productBuilder.updateBrandsPrice(brandsCatalogs);
     }
 
     @PostMapping("/parsePicsRUSBT")

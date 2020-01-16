@@ -45,7 +45,7 @@ public class ProductBuilder {
     private final BrandsRepo brandsRepo;
     private final OrderRepo orderRepo;
 
-    public void updateProductsDB(ArrayList<MultipartFile> supplierCatalogs) {
+    public int updateProductsDB(ArrayList<MultipartFile> supplierCatalogs) {
 
         parseToOriginalProducts(supplierCatalogs);
 
@@ -59,9 +59,10 @@ public class ProductBuilder {
 
         checkOrdersForProductAvailable();
 
-        /// parseRUSBTParams();
+        int totalProducts = productRepo.findAll().size();
+        log.info("Update Complete! Products available: " + totalProducts);
 
-        log.info("Update Complete! Products available: " + productRepo.findAll().size());
+        return totalProducts;
     }
 
     /*Обновление данных таблицы поставщиков*/
@@ -255,7 +256,6 @@ public class ProductBuilder {
     }
 
     private Product resolveProductsDetails(OriginalProduct originalProduct, Product product) {
-        //log.info("resolveProductsDetails: " + originalProduct.getOriginalName());
         boolean supplierRBT   = originalProduct.getSupplier().equals("RBT");
 
         String singleTypeName = product.getSingleTypeName();
@@ -266,12 +266,10 @@ public class ProductBuilder {
         String annotation     = resolveAnnotation(originalProduct, supplierRBT);
         String fullName       = resolveFullName(originalName, modelName, singleTypeName, originalBrand).trim();
         String groupBrandName = resolveBrandName(singleTypeName, originalBrand).trim();
-        //String searchName     = resolveSearchName(modelName, singleTypeName, originalBrand).trim();
         String searchName     = resolveSearchName(originalProduct, modelName, singleTypeName).trim();
         String shortModelName = resolveShortModel(modelName).trim();
         String pic            = resolveProductPic(originalProduct);
-        String shortAnnotation      = resolveShortAnnotation(annotation, originalProduct);
-        //String formattedAnnotation  = shortAnnotation.replaceAll(";", "<br>");
+        String shortAnnotation = resolveShortAnnotation(annotation, originalProduct);
 
         Integer defaultPrice  = makeRoundFinalPrice(originalProduct.getOriginalPrice(), product.getDefaultCoefficient());//resolveDefaultPrice(originalProduct, product.getDefaultCoefficient());
         Integer finalPrice    = resolveFinalPrice(originalProduct, product.getDefaultCoefficient());
@@ -299,7 +297,6 @@ public class ProductBuilder {
         product.setShortModelName(shortModelName);
         product.setAnnotation(annotation);
         product.setShortAnnotation(shortAnnotation);
-        //product.setFormattedAnnotation(formattedAnnotation);
 
         product.setSupplier(originalProduct.getSupplier());
         product.setPic(pic);
@@ -451,8 +448,8 @@ public class ProductBuilder {
 
                     pic = constantPics.get(productGroup);
                     if (pic == null) {
-                        Product product = productRepo.findFirstByProductGroupAndPicIsNotNullAndPicNotContains(productGroup, "legprom71");
-                        pic = product != null ? product.getPic() : "D:\\Projects\\Rest\\src\\main\\resources\\static\\pics\\toster.png";
+                        Product product = productRepo.findFirstByProductGroupAndPicIsNotNullAndPicNotContains(productGroup, "noimg_quadro");
+                        pic = product != null ? product.getPic() : "https://www.euromag.ru/storage/c/2018/08/28/1535465785_727980_36.jpg";
                     }
                     group.add(productGroup);
                     group.add(pic);
@@ -475,7 +472,7 @@ public class ProductBuilder {
         }
     }
 
-    public void parseRUSBTParams() {
+    public Map<String, Integer> parseRUSBTParams() {
         AtomicInteger count404 = new AtomicInteger();
         AtomicInteger countPic = new AtomicInteger();
         AtomicInteger countAnno = new AtomicInteger();
@@ -497,10 +494,6 @@ public class ProductBuilder {
             try
             {
                 Document page = Jsoup.connect(link).get();
-
-                /*if (!page.hasText()) {
-                    throw new ConnectException();
-                }*/
 
                 System.out.println();
                 log.info("Парсинг: " + originalProduct.getOriginalName());
@@ -611,17 +604,23 @@ public class ProductBuilder {
             }
         });
 
-        System.out.println();
-        log.info("Всего товаров: " + originalProducts.size());
-        log.info("Товаров с изображениями: " + countPic);
-        log.info("Товаров с аннотацией: "+ countAnno);
-        log.info("404 на сайте: " + count404);
-        log.info("ConnectException: " + connectionError);
+        Map<String, Integer> parsingResult = new HashMap<>();
+        parsingResult.put("Всего товаров: ", originalProducts.size());
+        parsingResult.put("Товаров с изображениями: ", countPic.intValue());
+        parsingResult.put("Товаров с аннотацией: ", countAnno.intValue());
+        parsingResult.put("404 на сайте: ", count404.intValue());
+        parsingResult.put("ConnectException: ", connectionError.intValue());
+        parsingResult.forEach((s, integer) -> log.info(s + ": " + integer));
+
 
         productRepo.findAll().forEach(product -> {
             product.setShortAnnotation(resolveShortAnnotation(product.getAnnotation(), originalRepo.findByProductID(product.getProductID())));
         });
 
+        mapCatalogJSON();
+        log.info("Done!");
+
+        return parsingResult;
     }
 
     /*Загрузить прайсы со специальными товарами от поставщика*/
@@ -675,17 +674,16 @@ public class ProductBuilder {
     }
 
     private String resolveProductPic(OriginalProduct originalProduct) {
-        return originalProduct.getOriginalPic() != null ? originalProduct.getOriginalPic() : "https://legprom71.ru/Content/images/no-photo.png";
+        return originalProduct.getOriginalPic() != null ? originalProduct.getOriginalPic() : "http://rusbt.ru/bitrix/templates/main_s2/images/noimg/noimg_quadro.jpg"; ///  https://legprom71.ru/Content/images/no-photo.png
     }
 
     private String resolveShortAnnotation(String annotation, OriginalProduct originalProduct) {
         if (!annotation.isEmpty())
         {
             String shortAnnotation;
-            String splitter  = (originalProduct.getSupplier().equals("RBT") || originalProduct.getAnnotationParsed() != null) ? "; " : ", ";
-            String[] stopList = {": нет", ": 0",  ": -", "количество шт в", "Количество изделий"};
+            String[] stopList = {": нет", ": Нет", ": 0",  ": -", "количество шт в", "Количество изделий"};
 
-            List<String> filters = new LinkedList<>(Arrays.asList(annotation.split(splitter)));
+            List<String> filters = new LinkedList<>(Arrays.asList(annotation.split(";")));
             filters.removeIf(filter -> Arrays.stream(stopList).parallel().anyMatch(filter::contains));
 
             shortAnnotation = filters.toString().replaceAll("\\[|\\]","");
@@ -734,7 +732,7 @@ public class ProductBuilder {
         }
         switch (originalCategory) {
             case "Аудио"                    : return "Автотовары";
-            case "Электроника"              : return "Теле-Видео-Аудио";
+            case "Электроника"              : return "Сопутствующие товары";
             case "Крупная техника для кухни":
             case "Мелкая техника для кухни" : return "Кухонная техника";
             case "Красота и здоровье"       : return "Приборы персонального ухода";
@@ -784,22 +782,6 @@ public class ProductBuilder {
 
         return searchName.toLowerCase().replaceAll(" ","").concat(searchName.toLowerCase().replaceAll("\\s|\\p{P}",""));
     }
-
-    /*private String resolveSearchName(String modelName, String singleTypeName, String originalBrand) {
-        String shortModel;
-        Pattern pattern = Pattern.compile("^[\\w\\W\\s?]+ [А-ЯA-Z\\W?]{3,20}$");
-        Matcher matcher = pattern.matcher(modelName);
-
-        if (matcher.matches()) {
-            shortModel = StringUtils.substringBeforeLast(modelName, " ").replaceAll(" ", "");
-        }
-        else {
-            shortModel = modelName.replaceAll(" ", "");
-        }
-
-        shortModel = shortModel.replaceAll("-", "").replaceAll("_", "").replaceAll("_", "").replaceAll("\\(", "").replaceAll("\\)", "").replaceAll("/", "").toLowerCase();
-        return singleTypeName.concat(originalBrand).concat(shortModel).replaceAll(" ", "").toLowerCase();
-    }*/
 
     private String resolveBrandName(String singleTypeName, String originalBrand) {
         return singleTypeName.concat(" ").concat(StringUtils.capitalize(originalBrand.toLowerCase()));
@@ -862,20 +844,6 @@ public class ProductBuilder {
         else return finalPrice;
     }
 
-    /*
-    private String resolveFullName(String originalName, String modelName, String singleTypeName, String originalBrand) {
-        String fullName;
-
-        if (!modelName.isEmpty()) {
-            fullName = singleTypeName.trim().concat(" ").concat(StringUtils.capitalize(originalBrand.toLowerCase()).trim()).concat(" ").concat(modelName.trim());
-        }
-
-        if (fullName.isEmpty()) {
-            fullName = StringUtils.capitalize(StringUtils.substringBefore(originalName, ", "));
-        }
-
-        return StringUtils.capitalize(fullName);
-    }*/
     private String resolveFullName(String originalName, String modelName, String singleTypeName, String originalBrand) {
         String fullName;
 
@@ -1001,96 +969,5 @@ public class ProductBuilder {
 
     public void test() {
         log.info("test");
-
-
-        productRepo.findAll().forEach(product -> {
-            String origName = product.getOriginalName();
-            String singleName = product.getSingleTypeName();
-            String fullName = product.getFullName();
-
-            //if (fullName)
-
-            String searchName = singleName.concat(origName).toLowerCase().replaceAll("\\s|\\p{P}","");
-
-            System.out.println();
-            log.info("origName: " + origName);
-            log.info("searchName: " + searchName);
-        });
-
-
-        /*Thread thread10 = new Thread(() -> {
-
-            originalRepo.findAll().forEach(originalProduct -> {
-
-                if (originalProduct.getHasFormattedAnno() != null) {
-                    Product product = productRepo.findByProductID(originalProduct.getProductID());
-                    productRepo.save(product);
-                }
-
-            });
-        });*/
-        /*AtomicInteger countAnno = new AtomicInteger();
-
-        originalRepo.findAll().forEach(originalProduct -> {
-
-            if (originalProduct.getHasFormattedAnno() != null) {
-                Product product = productRepo.findByProductID(originalProduct.getProductID());
-                productRepo.save(product);
-                countAnno.getAndIncrement();
-            }
-
-        });
-
-        productRepo.findAll().forEach(product -> {
-            String modelName = product.getModelName();
-            if (modelName.startsWith("Модель: ")) {
-                modelName = StringUtils.substringAfter(modelName, "Модель: ").trim();
-                product.setModelName(modelName);
-                productRepo.save(product);
-            }
-        });
-
-        productRepo.findAll().forEach(product -> {
-            // setShortAnnotation
-            // setSearchName
-            // shortModelName
-        });*/
-
-        /*Thread thread1 = new Thread(() -> {
-            productRepo.findAll().forEach(product -> {
-                // setShortAnnotation
-                // setSearchName
-                // shortModelName
-            });
-        });*/
-
-        //thread10.start();
-        //thread1.start();
-
-
-
-
-
-        /*originalRepo.findAll().forEach(originalProduct -> {
-            if (originalProduct.getSupplier().equals("RUSBT") && originalProduct.getOriginalPic() != null) {
-
-                System.out.println();
-                log.info(originalProduct.toString());
-                log.info(originalProduct.getOriginalPic());
-
-                String id = originalProduct.getProductID();
-                Product product = productRepo.findByProductID(id);
-                try {
-                    product.setPic(originalProduct.getOriginalPic());
-                    product.setPics(originalProduct.getPics());
-                    product.setAnnotation(originalProduct.getOriginalAnnotation());
-                    product.setHasFormattedAnno(true);
-                    productRepo.save(product);
-                }
-                catch (NullPointerException e) {
-                    e.printStackTrace();
-                }
-            }
-        });*/
     }
 }

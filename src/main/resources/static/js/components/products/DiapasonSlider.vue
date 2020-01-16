@@ -17,6 +17,7 @@
                 <template v-slot:prepend>
                     <v-text-field outlined
                                   dense
+                                  :disabled="noSecondVal"
                                   color="#e52d00"
                                   @input="doFilter()"
                                   v-model="range[0]"
@@ -26,6 +27,7 @@
                 </template>
                 <template v-slot:append>
                     <v-text-field outlined
+                                  :disabled="noSecondVal"
                                   dense
                                   color="#e52d00"
                                   @input="doFilter()"
@@ -55,7 +57,8 @@
                 max: this.diapasonVal[1],
                 range: this.diapasonVal,
                 resetRange: this.diapasonVal,
-                diapasonInFilter: false
+                diapasonInFilter: false,
+                noSecondVal: false
             }
         },
         methods: {
@@ -77,6 +80,13 @@
                 this.range = this.resetRange
                 this.diapasonInFilter = false
                 this.filterProducts('reset')
+            }
+        },
+        created() {
+            if (!this.range[1]) {
+                this.range[1] = this.diapasonVal[0]
+                this.max = this.diapasonVal[0]
+                this.noSecondVal = true
             }
         }
     }
