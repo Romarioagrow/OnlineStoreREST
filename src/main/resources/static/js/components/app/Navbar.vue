@@ -1,21 +1,23 @@
 <template>
     <div>
         <v-app-bar
-                color="#f48337"
+                color="#24344d"
                 dark
                 :clipped-left="$vuetify.breakpoint.lgAndUp"
                 app
                 height="70"
-                src="../../../img/navpic.png"
                 flat
         >
+<!--                src="../../../img/navpic.png"
+          -->
             <router-link to="/catalog">
                 <v-app-bar-nav-icon></v-app-bar-nav-icon>
             </router-link>
 
             <v-toolbar-title>
                 <router-link to="/">
-                    <v-img src="../../../img/logo.png" contain height="60"></v-img>
+                  <v-btn outlined >HOME</v-btn>
+<!--                    <v-img src="../../..//logo.png" contain height="60"></v-img>-->
                 </router-link>
             </v-toolbar-title>
 
